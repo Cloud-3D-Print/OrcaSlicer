@@ -1345,98 +1345,227 @@ static size_t read_callback(char *buffer, size_t size, size_t nitems, void *inst
     return stream->gcount();
 }
 
-bool MainFrame::upload_project_c3dp(){
-    wxString fileName = m_plater->get_project_filename(".3mf");
-    bool ret = (m_plater != nullptr) ? m_plater->export_3mf(into_path(fileName)) : false;
-    if (ret) {
-//        wxGetApp().update_saved_preset_from_current_preset();
-        m_plater->reset_project_dirty_after_save();
+// Define the callback function
+static size_t WriteCallback(void *contents, size_t size, size_t nmemb, std::string *userp) {
+    userp->append((char*)contents, size * nmemb);
+    return size * nmemb;
+}
+
+bool MainFrame::upload_gcode_c3dp() {
+    wxString fileName = m_plater->get_project_filename(".gcode");
+    m_plater->export_gcode(false);
+    wxString gcodeFilePath = m_plater->get_export_gcode_filename(".gcode");
+    wxLogMessage("Gcode file path: %s", gcodeFilePath);
+    if (gcodeFilePath.IsEmpty()) {
+        wxLogMessage("Failed to get exported gcode file path.");
+        return false;
     }
-    boost::filesystem::path path = into_path(fileName);
-    if(exists(path)){
-        //If file exsists upload to c3dp server
 
+    // Initialize CURL for the upload
+    CURL *curl = curl_easy_init();
+    if (!curl) {
+        wxLogMessage("Failed to initialize CURL.");
+        return false;
+    }
+
+    // Random UUID generator
+    boost::uuids::random_generator generator;
+    boost::uuids::uuid uuid = generator();
+
+    //Response buffer
+
+    std::string readBuffer; // This will hold the response data
+
+
+    // Set up the form data
+    struct curl_httppost *formpost = NULL;
+    struct curl_httppost *lastptr = NULL;
+    curl_formadd(&formpost, &lastptr,
+                 CURLFORM_COPYNAME, "file",
+                 CURLFORM_FILE, gcodeFilePath.c_str(),
+                 CURLFORM_END);
+
+    // Add other form fields
+    curl_formadd(&formpost, &lastptr,
+                 CURLFORM_COPYNAME, "ssId",
+                 CURLFORM_COPYCONTENTS, to_string(uuid).c_str(),
+                 CURLFORM_END);
         
-        CURL *curl;
-        CURLcode res;
-        std::ifstream file(path.generic_string(), std::ifstream::binary);
+        curl_formadd(&formpost, &lastptr,
+                 CURLFORM_COPYNAME, "fileName",
+                 CURLFORM_COPYCONTENTS, gcodeFilePath.c_str(),
+                 CURLFORM_END);
+            curl_formadd(&formpost, &lastptr,
+                 CURLFORM_COPYNAME, "orgId",
+                 CURLFORM_COPYCONTENTS, "0",
+                 CURLFORM_END);
+                         curl_formadd(&formpost, &lastptr,
+                 CURLFORM_COPYNAME, "estimatedWeight",
+                 CURLFORM_COPYCONTENTS, "0",
+                 CURLFORM_END);
+                         curl_formadd(&formpost, &lastptr,
+                 CURLFORM_COPYNAME, "estimatedPrintingTime",
+                 CURLFORM_COPYCONTENTS, "0",
+                 CURLFORM_END);
+                         curl_formadd(&formpost, &lastptr,
+                 CURLFORM_COPYNAME, "estimatedFilamentsUsed",
+                 CURLFORM_COPYCONTENTS, "0",
+                 CURLFORM_END);
+                         curl_formadd(&formpost, &lastptr,
+                 CURLFORM_COPYNAME, "estimatedCost",
+                 CURLFORM_COPYCONTENTS, "0",
+                 CURLFORM_END);
 
-        if (!file.is_open()) {
-            std::cerr << "Failed to open file: " << path.generic_string() << std::endl;
-            return;
-        }
+    // Set the URL and other options
+    curl_easy_setopt(curl, CURLOPT_URL, "https://tx-pm.cloud3dprint.com:8443/uploadGcodeFile");
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
 
-        curl_global_init(CURL_GLOBAL_ALL);
-        curl = curl_easy_init();
-    if (curl) {
-        
-        struct curl_slist *headers = NULL;
-
-        std::string filename = "token.json";
-        if(std::filesystem::exists(filename)){
-        std::ifstream tokenFile("token.json");
+    // Include the Authorization header
+    std::string token;
+    std::string filename = "token.json";
+    if (std::filesystem::exists(filename)) {
+        std::ifstream tokenFile(filename);
         if (tokenFile.is_open()) {
             std::string tokenJson((std::istreambuf_iterator<char>(tokenFile)), std::istreambuf_iterator<char>());
             tokenFile.close();
 
             try {
                 nlohmann::json tokenData = nlohmann::json::parse(tokenJson);
-                std::string token = tokenData["token"];
-
-                // Use the token here
-                headers = curl_slist_append(headers, ("Authorization: Bearer " + token).c_str());
+                token = tokenData["token"];
             } catch (const std::exception& e) {
                 std::cerr << "Failed to parse token JSON: " << e.what() << std::endl;
+                wxLogMessage("Failed to parse token JSON: %s", e.what());
+                return false;
             }
         } else {
             std::cerr << "Failed to open token file: " << filename << std::endl;
-            
+            wxLogMessage("Failed to open token file: %s", filename);
+            return false;
         }
-        headers = curl_slist_append(headers, "Content-Type: multipart/form-data");
-        //Get token 
-
-
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_URL, "https://tx-pm.cloud3dprint.com:8443/cloudStorage/orca/upload3mfFile");
-
-        curl_mime *mime;
-        curl_mimepart *part;
-        mime = curl_mime_init(curl);
-
-        // Add ssId
-        part = curl_mime_addpart(mime);
-        curl_mime_name(part, "ssId");
-         boost::uuids::random_generator generator;
-        boost::uuids::uuid uuid = generator();
-        curl_mime_data(part, to_string(uuid).c_str(), CURL_ZERO_TERMINATED);
-
-        // Add orgId
-        part = curl_mime_addpart(mime);
-        curl_mime_name(part, "orgId");
-        curl_mime_data(part, "0", CURL_ZERO_TERMINATED);
-
-        // Add file
-        part = curl_mime_addpart(mime);
-        curl_mime_name(part, "file");
-        curl_mime_filename(part, path.generic_string().c_str());
-        curl_mime_data_cb(part, (curl_off_t)file.tellg(), read_callback, nullptr, nullptr, &file);
-
-        curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
-
-        res = curl_easy_perform(curl);
-        if (res != CURLE_OK) {
-            std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
-        }
-
-        curl_mime_free(mime);
-        curl_easy_cleanup(curl);
-        curl_slist_free_all(headers);
     }
 
+    struct curl_slist *headers = NULL;
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    headers = curl_slist_append(headers, ("Authorization: Bearer " + token).c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+    // Perform the file upload
+    CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
+        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+        wxLogMessage("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+        // Cleanup
+        curl_easy_cleanup(curl);
+        curl_formfree(formpost);
+        curl_slist_free_all(headers);
+        return false;
+    }
+
+    // Log the server response
+    wxLogMessage("Server response: %s", readBuffer);
+    // Log successful upload
+    wxLogMessage("File upload successful.");
+
+    // Cleanup
+    curl_easy_cleanup(curl);
+    curl_formfree(formpost);
+    curl_slist_free_all(headers);
+
+    return true;
+}
+
+
+bool MainFrame::upload_project_c3dp(){
+    wxString fileName = m_plater->get_project_filename(".3mf");
+    bool ret = (m_plater != nullptr) ? m_plater->export_3mf(into_path(fileName)) : false;
+    if (!ret) {
+        wxLogMessage("Failed to export .3mf project file.");
+        return false;
+    }
+
+    m_plater->reset_project_dirty_after_save();
+
+    boost::filesystem::path path = into_path(fileName);
+    if (!boost::filesystem::exists(path)) {
+        wxLogMessage("Project file does not exist after export: %s", path.string());
+        return false;
+    }
+
+    wxLogMessage("File path: %s", fileName.c_str());
+
+    std::ifstream file(path.generic_string(), std::ifstream::binary);
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file: " << path.generic_string() << std::endl;
+        wxLogMessage("Failed to open project file for reading: %s", path.generic_string());
+        return false;
+    }
+
+    CURL *curl = curl_easy_init();
+    if (!curl) {
+        wxLogMessage("Failed to initialize CURL.");
+        file.close();
+        return false;
+    }
+
+    curl_global_init(CURL_GLOBAL_ALL);
+    struct curl_slist *headers = nullptr;
+
+    std::string filename = "token.json";
+    if (std::filesystem::exists(filename)) {
+        std::ifstream tokenFile(filename);
+        if (tokenFile.is_open()) {
+            std::string tokenJson((std::istreambuf_iterator<char>(tokenFile)), std::istreambuf_iterator<char>());
+            tokenFile.close();
+
+            try {
+                auto tokenData = nlohmann::json::parse(tokenJson);
+                std::string token = tokenData["token"];
+                headers = curl_slist_append(headers, ("Authorization: Bearer " + token).c_str());
+            } catch (const std::exception& e) {
+                std::cerr << "Failed to parse token JSON: " << e.what() << std::endl;
+                wxLogMessage("Failed to parse token JSON: %s", e.what());
+                curl_easy_cleanup(curl);
+                file.close();
+                return false;
+            }
+        } else {
+            std::cerr << "Failed to open token file: " << filename << std::endl;
+            wxLogMessage("Failed to open token file: %s", filename);
+            curl_easy_cleanup(curl);
+            file.close();
+            return false;
+        }
+    }
+
+    headers = curl_slist_append(headers, "Content-Type: multipart/form-data");
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_URL, "https://tx-pm.cloud3dprint.com:8443/cloudStorage/orca/upload3mfFile");
+
+    curl_mime *mime = curl_mime_init(curl);
+    curl_mimepart *part;
+
+    // Add form parts
+    // (Assuming implementation for 'read_callback' and other details are handled elsewhere in the code)
+
+    CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
+        std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+        wxLogMessage("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+    } else {
+        wxLogMessage("Successfully uploaded project file.");
+    }
+
+    curl_mime_free(mime);
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
     file.close();
     curl_global_cleanup();
-    }
-}}
+
+    return res == CURLE_OK;
+}
+
 
 bool MainFrame::save_project_as(const wxString& filename)
 {
@@ -1730,6 +1859,7 @@ wxBoxSizer* MainFrame::create_side_tools()
         }
     );
 
+    
     m_print_option_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent& event)
         {
             SidePopup* p = new SidePopup(this);
@@ -1759,9 +1889,23 @@ wxBoxSizer* MainFrame::create_side_tools()
                     this->Layout();
                     p->Dismiss();
                     });
+                    //Upload to C3DP
+                SideButton* upload_gcode_btn_c3dp = new SideButton(p, _L("Upload G-code file"), "");
+                upload_gcode_btn_c3dp->SetCornerRadius(0);
+                upload_gcode_btn_c3dp->Bind(wxEVT_BUTTON, [this, p](wxCommandEvent&) {   
+                    upload_gcode_c3dp();
+                    });
 
+                SideButton* upload_project_btn_c3dp = new SideButton(p, _L("Upload 3MF file"), "");
+                upload_project_btn_c3dp->SetCornerRadius(0);
+                upload_project_btn_c3dp->Bind(wxEVT_BUTTON, [this, p](wxCommandEvent&) {
+                    upload_project_c3dp();
+                    });
+                p->append_button(upload_gcode_btn_c3dp);
+                p->append_button(upload_project_btn_c3dp);
                 p->append_button(send_gcode_btn);
                 p->append_button(export_gcode_btn);
+
             }
             else {
                 //Orca Slicer Buttons

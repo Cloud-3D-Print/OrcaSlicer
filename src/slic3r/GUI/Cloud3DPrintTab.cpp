@@ -98,6 +98,7 @@ void Cloud3DPrintTab::OnScriptMessage(wxWebViewEvent& event)
                 wxLogMessage("Download failed: cannot open file\n");
                 return; // Can't open the file for writing
             }
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
             curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
             // Set the URL and callback function
             curl_easy_setopt(curl, CURLOPT_URL, downloadUrl.utf8_str());

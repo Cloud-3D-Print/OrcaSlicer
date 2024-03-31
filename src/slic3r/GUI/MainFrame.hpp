@@ -330,6 +330,7 @@ public:
     bool can_upload() const;
     void save_project();
     bool upload_project_c3dp();
+    bool upload_gcode_c3dp();
     bool save_project_as(const wxString& filename = wxString());
 
     void        add_to_recent_projects(const wxString& filename);

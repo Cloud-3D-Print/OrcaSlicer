@@ -10735,6 +10735,7 @@ void Plater::export_gcode(bool prefer_removable)
     }
 }
 
+
 void Plater::send_to_printer(bool isall)
 {
     p->on_action_send_to_printer(isall);

@@ -21,6 +21,7 @@
 #include "Monitor.hpp"
 #include "Auxiliary.hpp"
 #include "Project.hpp"
+#include "Cloud3DPrintTab.hpp"
 #include "CalibrationPanel.hpp"
 #include "UnsavedChangesDialog.hpp"
 #include "Widgets/SideButton.hpp"
@@ -225,9 +226,10 @@ public:
         tpPreview       = 2,
         tpMonitor       = 3,
         tpProject       = 4,
-        tpCalibration   = 5,
-        tpAuxiliary     = 6,
-        toDebugTool     = 7,
+        tpC3DP          = 5,
+        tpCalibration   = 6,
+        tpAuxiliary     = 7,
+        toDebugTool     = 8,
     };
 
     //BBS: add slice&&print status update logic
@@ -327,6 +329,7 @@ public:
     //BBS
     bool can_upload() const;
     void save_project();
+    bool upload_project_c3dp();
     bool save_project_as(const wxString& filename = wxString());
 
     void        add_to_recent_projects(const wxString& filename);
@@ -362,6 +365,9 @@ public:
 
     //AuxiliaryPanel*       m_auxiliary{ nullptr };
     ProjectPanel*         m_project{ nullptr };
+
+    //C3DPPanel*            m_c3dp{ nullptr };
+    Cloud3DPrintTab*      m_c3dp{ nullptr };
 
     CalibrationPanel*     m_calibration{ nullptr };
     WebViewPanel*         m_webview { nullptr };

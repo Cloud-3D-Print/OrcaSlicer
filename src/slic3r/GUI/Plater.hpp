@@ -408,7 +408,7 @@ public:
     //BBS add extra param for exporting 3mf silence
     // BBS: backup
     int export_3mf(const boost::filesystem::path& output_path = boost::filesystem::path(), SaveStrategy strategy = SaveStrategy::Default, int export_plate_idx = -1, Export3mfProgressFn proFn = nullptr);
-
+    int upload_3mf_c3dp();
     //BBS
     void publish_project();
 

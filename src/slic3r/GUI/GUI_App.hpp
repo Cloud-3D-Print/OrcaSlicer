@@ -300,6 +300,9 @@ private:
     bool             m_show_gcode_window{true};
     boost::thread    m_check_network_thread;
   public:
+    // Cloud 3D Print stuff
+    bool            m_c3dp_login { false };
+    
       //try again when subscription fails
     void            on_start_subscribe_again(std::string dev_id);
     void            check_filaments_in_blacklist(std::string tag_supplier, std::string tag_material, bool& in_blacklist, std::string& action, std::string& info);
@@ -328,6 +331,9 @@ private:
     // SoftFever
     bool show_gcode_window() const { return m_show_gcode_window; }
     void toggle_show_gcode_window();
+
+    bool show_3d_navigator() const { return app_config->get_bool("show_3d_navigator"); }
+    void toggle_show_3d_navigator() const { app_config->set_bool("show_3d_navigator", !show_3d_navigator()); }
 
     wxString get_inf_dialog_contect () {return m_info_dialog_content;};
 

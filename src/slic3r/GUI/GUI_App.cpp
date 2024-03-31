@@ -2169,6 +2169,8 @@ void GUI_App::init_app_config()
         }
 #endif // _WIN32
     }
+    set_logging_level(Slic3r::level_string_to_boost(app_config->get("log_severity_level")));
+
 }
 
 // returns true if found newer version and user agreed to use it
@@ -2293,6 +2295,28 @@ int GUI_App::OnExit()
 #endif
         delete m_agent;
         m_agent = nullptr;
+    }
+
+    // Orca: clean up encrypted bbl network log file if plugin is used
+    // No point to keep them as they are encrypted and can't be used for debugging
+    try {
+        auto              log_folder  = boost::filesystem::path(data_dir()) / "log";
+        const std::string filePattern = R"(debug_network_.*\.log\.enc)";
+        std::regex        pattern(filePattern);
+        if (boost::filesystem::exists(log_folder)) {
+            std::vector<boost::filesystem::path> network_logs;
+            for (auto& it : boost::filesystem::directory_iterator(log_folder)) {
+                auto temp_path = it.path();
+                if (boost::filesystem::is_regular_file(temp_path) && std::regex_match(temp_path.filename().string(), pattern)) {
+                    network_logs.push_back(temp_path.filename());
+                }
+            }
+            for (auto f : network_logs) {
+                boost::filesystem::remove(f);
+            }
+        }
+    } catch (...) {
+        BOOST_LOG_TRIVIAL(error) << "Failed to clean up encrypt bbl network log file";
     }
 
     return wxApp::OnExit();
@@ -3846,6 +3870,14 @@ std::string GUI_App::handle_web_request(std::string cmd)
                         mainframe->m_webview->SendRecentList(INT_MAX);
                     }
                 }
+            }
+            else if (command_str.compare("save_c3dp_token") == 0){
+                    if (root.get_child_optional("data") != boost::none) {
+                    pt::ptree data_node = root.get_child("data");
+                    boost::optional<std::string> token = data_node.get_optional<std::string>("token");
+                    
+                }
+
             }
             // else if (command_str.compare("modelmall_model_advise_get") == 0) {
             //     if (mainframe && this->app_config->get("staff_pick_switch") == "true") {

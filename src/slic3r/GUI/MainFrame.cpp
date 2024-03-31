@@ -73,6 +73,9 @@
 #include "ConfigWizard.hpp"
 #include "Widgets/WebView.hpp"
 #include "DailyTips.hpp"
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #ifdef _WIN32
 #include <dbt.h>
@@ -207,7 +210,7 @@ DPIFrame(NULL, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, BORDERLESS_FRAME_
         set_max_recent_count((int)max_recent_count);
 
     //reset log level
-    auto loglevel = wxGetApp().app_config->get("severity_level");
+    auto loglevel = wxGetApp().app_config->get("log_severity_level");
     Slic3r::set_logging_level(Slic3r::level_string_to_boost(loglevel));
 
     // BBS
@@ -1097,7 +1100,7 @@ void MainFrame::init_tabpanel() {
     Bind(EVT_LOAD_PRINTER_URL, [this](LoadPrinterViewEvent &evt) {
         wxString url = evt.GetString();
         wxString key = evt.GetAPIkey();
-        //select_tab(MainFrame::tpMonitor);
+        //select_tab(MainFrame::tpMonitor)  ;
         m_printer_view->load_url(url, key);
     });
     m_printer_view->Hide();
@@ -1106,9 +1109,17 @@ void MainFrame::init_tabpanel() {
     m_project->SetBackgroundColour(*wxWHITE);
     m_tabpanel->AddPage(m_project, _L("Project"), std::string("tab_auxiliary_avtice"), std::string("tab_auxiliary_avtice"), false);
 
+        
+    m_c3dp = new Cloud3DPrintTab(m_tabpanel, wxID_ANY, wxDefaultPosition, wxDefaultSize);
+    m_c3dp->SetBackgroundColour(*wxWHITE);
+    m_tabpanel->AddPage(m_c3dp, _L("Cloud 3D Print"), std::string("tab_auxiliary_avtice"), std::string("tab_auxiliary_avtice"), false);
+
     m_calibration = new CalibrationPanel(m_tabpanel, wxID_ANY, wxDefaultPosition, wxDefaultSize);
     m_calibration->SetBackgroundColour(*wxWHITE);
     m_tabpanel->AddPage(m_calibration, _L("Calibration"), std::string("tab_monitor_active"), std::string("tab_monitor_active"), false);
+
+
+
 
     if (m_plater) {
         // load initial config
@@ -1326,6 +1337,106 @@ void MainFrame::save_project()
 {
     save_project_as(m_plater->get_project_filename(".3mf"));
 }
+
+
+static size_t read_callback(char *buffer, size_t size, size_t nitems, void *instream) {
+    std::istream *stream = static_cast<std::istream*>(instream);
+    stream->read(buffer, size * nitems);
+    return stream->gcount();
+}
+
+bool MainFrame::upload_project_c3dp(){
+    wxString fileName = m_plater->get_project_filename(".3mf");
+    bool ret = (m_plater != nullptr) ? m_plater->export_3mf(into_path(fileName)) : false;
+    if (ret) {
+//        wxGetApp().update_saved_preset_from_current_preset();
+        m_plater->reset_project_dirty_after_save();
+    }
+    boost::filesystem::path path = into_path(fileName);
+    if(exists(path)){
+        //If file exsists upload to c3dp server
+
+        
+        CURL *curl;
+        CURLcode res;
+        std::ifstream file(path.generic_string(), std::ifstream::binary);
+
+        if (!file.is_open()) {
+            std::cerr << "Failed to open file: " << path.generic_string() << std::endl;
+            return;
+        }
+
+        curl_global_init(CURL_GLOBAL_ALL);
+        curl = curl_easy_init();
+    if (curl) {
+        
+        struct curl_slist *headers = NULL;
+
+        std::string filename = "token.json";
+        if(std::filesystem::exists(filename)){
+        std::ifstream tokenFile("token.json");
+        if (tokenFile.is_open()) {
+            std::string tokenJson((std::istreambuf_iterator<char>(tokenFile)), std::istreambuf_iterator<char>());
+            tokenFile.close();
+
+            try {
+                nlohmann::json tokenData = nlohmann::json::parse(tokenJson);
+                std::string token = tokenData["token"];
+
+                // Use the token here
+                headers = curl_slist_append(headers, ("Authorization: Bearer " + token).c_str());
+            } catch (const std::exception& e) {
+                std::cerr << "Failed to parse token JSON: " << e.what() << std::endl;
+            }
+        } else {
+            std::cerr << "Failed to open token file: " << filename << std::endl;
+            
+        }
+        headers = curl_slist_append(headers, "Content-Type: multipart/form-data");
+        //Get token 
+
+
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_URL, "https://tx-pm.cloud3dprint.com:8443/cloudStorage/orca/upload3mfFile");
+
+        curl_mime *mime;
+        curl_mimepart *part;
+        mime = curl_mime_init(curl);
+
+        // Add ssId
+        part = curl_mime_addpart(mime);
+        curl_mime_name(part, "ssId");
+         boost::uuids::random_generator generator;
+        boost::uuids::uuid uuid = generator();
+        curl_mime_data(part, to_string(uuid).c_str(), CURL_ZERO_TERMINATED);
+
+        // Add orgId
+        part = curl_mime_addpart(mime);
+        curl_mime_name(part, "orgId");
+        curl_mime_data(part, "0", CURL_ZERO_TERMINATED);
+
+        // Add file
+        part = curl_mime_addpart(mime);
+        curl_mime_name(part, "file");
+        curl_mime_filename(part, path.generic_string().c_str());
+        curl_mime_data_cb(part, (curl_off_t)file.tellg(), read_callback, nullptr, nullptr, &file);
+
+        curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+
+        res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+            std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
+        }
+
+        curl_mime_free(mime);
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+    }
+
+    file.close();
+    curl_global_cleanup();
+    }
+}}
 
 bool MainFrame::save_project_as(const wxString& filename)
 {
@@ -2566,6 +2677,15 @@ void MainFrame::init_menubar_as_editor()
             },
             this, [this]() { return m_tabpanel->GetSelection() == tpPreview; },
             [this]() { return wxGetApp().show_gcode_window(); }, this);
+
+        append_menu_check_item(
+            viewMenu, wxID_ANY, _L("Show 3D Navigator"), _L("Show 3D navigator in Prepare and Preview scene"),
+            [this](wxCommandEvent&) {
+                wxGetApp().toggle_show_3d_navigator();
+                m_plater->get_current_canvas3D()->post_event(SimpleEvent(wxEVT_PAINT));
+            },
+            this, [this]() { return m_tabpanel->GetSelection() == TabPosition::tp3DEditor || m_tabpanel->GetSelection() == TabPosition::tpPreview; },
+            [this]() { return wxGetApp().show_3d_navigator(); }, this);
 
         append_menu_item(
             viewMenu, wxID_ANY, _L("Reset Window Layout"), _L("Reset to default window layout"),

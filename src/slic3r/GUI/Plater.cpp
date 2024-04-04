@@ -10294,6 +10294,95 @@ void Plater::add_file()
     }
 }
 
+void Plater::add_file(const wxArrayString input_files)
+{
+    BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << __LINE__ << " entry";
+    std::vector<fs::path> paths;
+    for (const auto &file : input_files) paths.emplace_back(into_path(file));
+
+    std::string snapshot_label;
+    assert(!paths.empty());
+
+    snapshot_label = "Import Objects";
+    snapshot_label += ": ";
+    snapshot_label += encode_path(paths.front().filename().string().c_str());
+    for (size_t i = 1; i < paths.size(); ++i) {
+        snapshot_label += ", ";
+        snapshot_label += encode_path(paths[i].filename().string().c_str());
+    }
+
+    // BBS: check file types
+    auto loadfiles_type  = LoadFilesType::NoFile;
+    auto amf_files_count = get_3mf_file_count(paths);
+
+    if (paths.size() > 1 && amf_files_count < paths.size()) { loadfiles_type = LoadFilesType::Multiple3MFOther; }
+    if (paths.size() > 1 && amf_files_count == paths.size()) { loadfiles_type = LoadFilesType::Multiple3MF; }
+    if (paths.size() > 1 && amf_files_count == 0) { loadfiles_type = LoadFilesType::MultipleOther; }
+    if (paths.size() == 1 && amf_files_count == 1) { loadfiles_type = LoadFilesType::Single3MF; };
+    if (paths.size() == 1 && amf_files_count == 0) { loadfiles_type = LoadFilesType::SingleOther; };
+
+    auto first_file = std::vector<fs::path>{};
+    auto tmf_file   = std::vector<fs::path>{};
+    auto other_file = std::vector<fs::path>{};
+
+    switch (loadfiles_type)
+    {
+    case LoadFilesType::Single3MF:
+        open_3mf_file(paths[0]);
+        break;
+
+    case LoadFilesType::SingleOther: {
+        Plater::TakeSnapshot snapshot(this, snapshot_label);
+        if (!load_files(paths, LoadStrategy::LoadModel, false).empty()) {
+            if (get_project_name() == _L("Untitled") && paths.size() > 0) {
+                p->set_project_filename(wxString::FromUTF8(paths[0].string()));
+            }
+            wxGetApp().mainframe->update_title();
+        }
+        break;
+    }
+    case LoadFilesType::Multiple3MF:
+        first_file = std::vector<fs::path>{paths[0]};
+        for (auto i = 0; i < paths.size(); i++) {
+            if (i > 0) { other_file.push_back(paths[i]); }
+        };
+
+        open_3mf_file(first_file[0]);
+        if (!load_files(other_file, LoadStrategy::LoadModel).empty()) { wxGetApp().mainframe->update_title(); }
+        break;
+
+    case LoadFilesType::MultipleOther: {
+        Plater::TakeSnapshot snapshot(this, snapshot_label);
+        if (!load_files(paths, LoadStrategy::LoadModel, true).empty()) {
+            if (get_project_name() == _L("Untitled") && paths.size() > 0) {
+                p->set_project_filename(wxString::FromUTF8(paths[0].string()));
+            }
+            wxGetApp().mainframe->update_title();
+        }
+        break;
+    }
+    case LoadFilesType::Multiple3MFOther:
+        for (const auto &path : paths) {
+            if (wxString(encode_path(path.filename().string().c_str())).EndsWith("3mf")) {
+                if (first_file.size() <= 0)
+                    first_file.push_back(path);
+                else
+                    tmf_file.push_back(path);
+            } else {
+                other_file.push_back(path);
+            }
+        }
+
+        open_3mf_file(first_file[0]);
+        load_files(tmf_file, LoadStrategy::LoadModel);
+        if (!load_files(other_file, LoadStrategy::LoadModel, false).empty()) { wxGetApp().mainframe->update_title(); }
+        break;
+    default:
+        break;
+    }
+}
+
+
 void Plater::update(bool conside_update_flag, bool force_background_processing_update)
 {
     unsigned int flag = force_background_processing_update ? (unsigned int)Plater::priv::UpdateParams::FORCE_BACKGROUND_PROCESSING_UPDATE : 0;

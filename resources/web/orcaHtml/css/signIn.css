@@ -1,0 +1,73 @@
+.c3p-login-main {
+  height: calc(100vh - 61px);
+  display: flex;
+  justify-content: center;
+  align-items: center; }
+
+.c3p-login-form {
+  width: 450px;
+  margin: 0 auto;
+  padding: 40px 35px 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  border-radius: 5px; }
+  .c3p-login-form .title {
+    margin: 0 auto 25px auto;
+    font-size: 24px;
+    color: #222230; }
+    .c3p-login-form .title span {
+      padding-bottom: 7px;
+      border-bottom: 5px solid #f86335; }
+  .c3p-login-form p {
+    color: #222230;
+    font-size: 13px;
+    margin-bottom: 35px; }
+
+.el-form-label span {
+  color: #ea6759; }
+
+.el-input__inner {
+  height: 48px;
+  line-height: 48px; }
+
+.el-input__icon {
+  font-size: 16px;
+  position: relative;
+  top: 2px; }
+
+.login-form-or {
+  margin-top: 35px; }
+  .login-form-or h4 {
+    text-align: center;
+    color: #121212;
+    margin-bottom: 20px;
+    position: relative; }
+    .login-form-or h4:after {
+      position: absolute;
+      content: "";
+      bottom: 50%;
+      left: 0;
+      width: 100%;
+      background: #ddd;
+      height: 1px; }
+    .login-form-or h4 span {
+      background: #fff;
+      position: relative;
+      z-index: 2;
+      padding: 0 15px; }
+
+.resend-btn {
+  position: absolute;
+  right: 30px;
+  top: 44px; }
+
+.login-rights {
+  text-align: center;
+  color: #95aac9;
+  line-height: 1.65; }
+
+.login-btn {
+  line-height: 21px;
+  font-size: 15px;
+  width: 100%; }
+
+/*# sourceMappingURL=signIn.css.map */

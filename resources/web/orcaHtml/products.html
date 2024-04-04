@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <!-- import CSS -->
+    <link rel="stylesheet" href="./fonts/iconfont/iconfont.css">
+    <link rel="stylesheet" href="./css/element-ui.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <style>
+        .stl-list{padding: 20px 15px; min-height: 540px}
+        .stl-item{margin: 0 10px 10px; display: inline-block;width: 188px; position: relative; cursor: pointer}
+        .stl-item:hover{opacity: 0.7}
+        .stl-item.on .el-image{background: #dbe5ef;}
+        .stl-item .el-image{border-radius: 8px;background: #eee;height: 188px; width: 188px}
+        .stl-item p{margin: 0;}
+        .stl-item .el-checkbox{ position: absolute; top: 8px; left: 10px;}
+        .stl-title{padding: 30px 25px 0;}
+        .stl-title .el-button{ margin-left: 10px; position: relative; top: -2px; font-size: 14px; border-radius: 8px;}
+        .el-table__empty-text{width: 70%; line-height: 1.6; padding: 15px 0;}
+        .user-card{border-left: 1px solid #eee ;display: flex;align-items: center;cursor: pointer;padding: 10px 0 10px 15px;}
+        .user-card .user-info{padding: 0 10px;}
+        .user-card h6{margin: 0;font-size: 14px;color: #333;}
+        .user-card p{margin: 0;font-size: 12px;color: #999;}
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="c3p-head clearfix">
+        <div class="c3p-logo fl">
+            <h1><i class="cp cp-slice-logo text-primary font-size-24 mr-1"></i>Cloud 3D Print</h1>
+        </div>
+        <div class="fr">
+            <el-dropdown trigger="click" @command="onDropdown">
+                <div class="user-card">
+                    <el-avatar v-if="userInfo.downloadUrl" :size="36" :src="userInfo.downloadUrl"></el-avatar>
+                    <el-avatar v-else> <i class="el-icon-user-solid font-size-24" style="padding-top: 6px"></i> </el-avatar>
+                    <div class="user-info">
+                        <h6>{{ userInfo.userName }}</h6>
+                        <p>Your account</p>
+                    </div>
+                    <i class="el-icon-arrow-down el-icon--right"></i>
+                </div>
+                <el-dropdown-menu slot="dropdown">
+                    <el-dropdown-item command="off"><div style="width: 150px"><i class="cp-close cp mr-1"></i>Log off</div></el-dropdown-item>
+                </el-dropdown-menu>
+            </el-dropdown>
+        </div>
+    </div>
+    <div v-loading="loading">
+        <div class="stl-title"><b class="font-size-18">Product list</b>  <el-button size="mini" @click="getOrgProductList()">Load product</el-button></div>
+        <div class="stl-list clearfix">
+            <div v-for="data in datalist" :key="data.projectId" class="stl-item" @click="onGetAllModel(data)">
+                <el-image :src="data.coverPictureUrl" width="188" height="188" fit="contain">
+                    <div slot="error" class="el-image__error">No cover</div>
+                </el-image>
+                <p class="font-size-16 text-ellipsis">{{ data.projectTitle }}</p>
+                <p class="font-size-12 mt-1 text-gray9">
+                    <i class="cp cp-sku"></i>
+                    {{ data.sku ? data.sku : 'N/A' }}
+                </p>
+                <p class="font-size-12 text-gray9">
+                    <span><i class="cp cp-settings-materials mr-1"></i>{{ data.material? data.material : 'N/A' }}</span>
+                    <span class="ml-2"><i class="cp cp-stop mr-1" :style="'color:' + data.color"></i>{{ data.color? data.color : 'N/A' }}</span>
+                </p>
+            </div>
+            <div v-if="datalist.length < 1">
+                <el-empty description="No product data">
+                    <div slot="description">
+                        The current user has no product data, please go to the <br>
+                        <el-link type="primary" :href="CLOUD_URL" target="_blank">Cloud 3d Print</el-link>
+                        to upload
+                    </div>
+                </el-empty>
+            </div>
+        </div>
+        <div class="text-right mt-5">
+            <el-pagination
+                    background
+                    layout="prev, pager, next"
+                    :total="total"
+                    :hide-on-single-page="true"
+                    @current-change="handleCurrentChange">
+            </el-pagination>
+        </div>
+    </div>
+    <!-- download single file  -->
+    <el-drawer :title="curProject.projectTitle" :visible.sync="modelDrawer" size="600px">
+        <div class="px-4">
+            <el-table :data="modelData" v-loading="modelLoading" style="width: 100%" empty-text="No data">
+                <el-table-column label="File info" width="80">
+                    <template slot-scope="scope">
+                        <el-image :src="scope.row.thumbnailUrl" fit="contain"></el-image>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="fileName" label="File name">
+                    <template slot="header" slot-scope="scope"> </template>
+                    <template slot-scope="scope">
+                        <p class="m-0">{{ scope.row.fileName }}</p>
+                        <p class="font-size-12 text-gray9 m-0" v-html="callFUC(scope.row.fileSize)"></p>
+                    </template>
+                </el-table-column>
+                <el-table-column>
+                    <template slot="header" slot-scope="scope">
+                        <el-button size="mini" type="primary" @click="onDownloadAll()" class="px-2 fr">All Slice</el-button>
+                    </template>
+                    <template slot-scope="scope">
+                        <p class="font-size-12 m-0 text-gray9">Create on: {{ callDateToStr(scope.row.createDate) }}</p>
+                        <p class="font-size-12 m-0 text-gray9">Dimension: {{ callMSC(scope.row) }}</p>
+                    </template>
+                </el-table-column>
+                <div slot="empty">
+                    The current product does not have model data, please go to the
+                    <el-link type="primary" :href="CLOUD_URL" target="_blank">Cloud 3d Print</el-link>
+                    to upload
+                </div>
+            </el-table>
+        </div>
+    </el-drawer>
+</div>
+</body>
+<!-- import Vue before Element -->
+<script src="js/vue.min.js"></script>
+<!-- import JavaScript -->
+<script src="js/axios.min.js"></script>
+<script src="js/element-ui.js"></script>
+<script src="js/dayjs.min.js"></script>
+<script src="js/base.js"></script>
+<script>
+  new Vue({
+    el: '#app',
+    data: function() {
+      return {
+        loading: false,
+        modelLoading: false,
+        downloadFileUrl: '',
+        curProject: {
+          projectId: '',
+          projectTitle: ''
+        },
+        userInfo: {},
+        downloadLoading: false,
+        token: '',
+        orgId: '',
+        total: 0,
+        pageNum: 1,
+        sName: '',
+        modelDrawer: false,
+        datalist: [],
+        modelData: []
+      }
+    },
+    mounted() {
+      this.token = localStorage.getItem('token')
+      if(!this.token) {
+        window.location.href = "./login.html"
+      }
+      const date = new Date()
+      const loginData = JSON.parse(localStorage.getItem('loginData'))
+      if(loginData.expiration * 1000 - date.getTime() < 0) {
+        window.location.href = "./login.html"
+      }
+      const tSend = {
+        sequence_id: Math.round(new Date() / 1000),
+        command: 'register_token',
+        token: this.token,
+      }
+      if(window.wx) window.wx.postMessage(JSON.stringify(tSend))
+      this.userInfo = JSON.parse(localStorage.getItem('userInfo'))
+      this.orgId = localStorage.getItem('orgId')
+      this.getOrgProductList()
+    },
+    methods: {
+      onDropdown(command) {
+        if (command === 'off') {
+          this.$confirm('Do you want to log out?', 'Confirm', {
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'No',
+            type: 'warning'
+          }).then(() => {
+            localStorage.removeItem('loginData')
+            localStorage.removeItem('token')
+            window.location.href = "./login.html"
+          }).catch(() => {});
+        }
+      },
+      onDownloadAll() {
+        const data = {
+          command: 'download_all_files',
+          token: this.token,
+          orgId: this.orgId,
+          projectId: this.curProject.projectId,
+          sequence_id: Math.round(new Date() / 1000),
+          modelList: []
+        };
+        // const tSend=[];
+        this.modelData.forEach((item, index) => {
+          data.modelList.push({
+            fileName: item.fileName,
+            fileUrl: item.url
+          })
+        })
+        console.log(JSON.stringify(data), 'Simar requires model links')
+        this.$message({
+          message: 'Simar requires model links: ' + JSON.stringify(data),
+          type: 'success'
+        });
+        // Get the download link for all models in the current project
+        if(window.wx)  window.wx.postMessage( JSON.stringify(data));
+        /*this.modelData.forEach((item, index) => {
+          setTimeout(() => {
+            console.log(item.fileName);
+            const a = document.createElement('a'); // 创建新的a标签
+            a.href = item.url; // 设置下载链接
+            a.download = item.fileName; // 设置下载文件名
+            a.style.display = 'none'; // 隐藏a标签，避免它影响页面布局
+            document.body.appendChild(a); // 将a标签添加到DOM中
+            a.click(); // 触发下载
+            document.body.removeChild(a); // 下载后立即移除a标签
+          }, index * 1000); // 每个文件下载间隔1秒，防止浏览器限制
+        });*/
+        // this.$message({ 'message': 'Download all files!', 'type': 'success' })
+      },
+      callMSC(data) {
+        return modelSizeConversion(data)
+      },
+      callFUC(size) {
+        return fileUnitConversion(size)
+      },
+      callDateToStr(time) {
+        return dateToStr(time)
+      },
+      handleCurrentChange(val) {
+        console.log(`当前页: ${val}`);
+        this.pageNum = val
+      },
+      getOrgProductList() {
+        const _this = this
+        this.loading = true
+        this.total = 0
+        this.datalist = []
+        // https://tx-msggw.cloud3dprint.com/pm-api/eyrone/project/list?organizationId=7169542249393725440&groupIdList=&categoryId=&status=&projectTitle=&isAsc=desc&sku=&pageSize=10&pageNum=1&topProjectId=
+        const config = {
+          method: 'get',
+          url: BASE_API + '/eyrone/project/list',
+          headers: {
+            'Authorization': 'Bearer ' + this.token
+          },
+          params: { organizationId: this.orgId, groupIdList:'', pageSize: 10, pageNum: this.pageNum, isAsc: 'asc', categoryId:'', status:'', projectTitle:'', topProjectId: '' },
+        };
+        axios(config).then(response => {
+          const list = response.data.datalist
+          this.total = response.data.total
+          list.filter(function(item, index) {
+            // Vue.set(item, 'checked', false)
+          })
+          this.datalist = list
+        }).catch(() => {
+          _this.$message({ 'message': 'Failed to obtain model data!', 'type': 'error' })
+        }).finally(() => {
+          this.loading = false
+        })
+      },
+      onGetAllModel(data) {
+        this.curProject = data
+        // this.loading = true
+        this.modelLoading = true
+        this.modelDrawer = true
+        this.modelData = []
+        localStorage.setItem('projectId', this.curProject.projectId)
+        const config = {
+          method: 'get',
+          url: BASE_API + '/file/meshFile/list-project',
+          headers: {
+            'Authorization': 'Bearer ' + this.token
+          },
+          params: { projectId: this.curProject.projectId },
+        };
+        axios(config).then(res => {
+          res.data.filter(function(item, index) {
+            // 异步请求下载链接
+            Vue.set(item, 'url', '')
+          })
+          this.onGetModelFile(res.data)
+          if(this.modelData.length) {
+            this.$message({ 'message': 'There are no model files currently in the product!', 'type': 'warning' })
+          }
+        }).catch(() => {
+          this.$message({ 'message': 'Failed to obtain model data!', 'type': 'error' })
+        })
+      },
+      async onGetModelFile(items){
+        await this.onCallFileUrl(items).then(() => {
+          this.modelData = items
+          this.modelLoading = false
+        }).catch(() => {
+          this.$message({ 'message': 'Failed to obtain model data!', 'type': 'error' })
+        })
+        // this.modelData =
+      },
+      async onCallFileUrl (items) {
+        return await Promise.all(
+          items.map(async (item) => {
+            try {
+              const config = {
+                method: 'get',
+                url: BASE_API + '/file/meshFile/download',
+                headers: {
+                  'Authorization': 'Bearer ' + this.token
+                },
+                params: { fileKey: item.fileKey },
+              };
+              const response = await axios(config); // 替换为你的API地址
+              item.url = response.data; // 假设API返回的数据在data属性中
+            } catch (error) {
+              console.error(`Error fetching data for item ${item.id}:`, error);
+              item.url = null; // 或者你可以设置一个错误提示或默认值
+            }
+            return item;
+          })
+        )
+      }
+    }
+  })
+</script>
+</html>

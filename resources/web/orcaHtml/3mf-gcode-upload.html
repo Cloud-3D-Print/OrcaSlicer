@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <!-- import CSS -->
+
+    <link rel="stylesheet" href="./css/element-ui.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <style>
+        .file-box {display: inline-block;position: relative;overflow: hidden;}
+        .file-btn {position: absolute;width: 100%;height: 100%;top: 0;left: 0;outline: none;filter: alpha(opacity=0);-moz-opacity: 0;-khtml-opacity: 0;opacity: 0;}
+    </style>
+</head>
+<body>
+<div id="app">
+    <div style="padding: 30px">
+        <div>
+            <el-button class="file-box" text>
+                <input type="file" ref="gcodeInput" class="file-btn" @change="onChangeGcodeInput" />{{ gcodeName }}
+            </el-button>
+            <el-button @click="onUGcodeFile()" type="primary" :loading="gcodeLoading">Confirm upload gcode</el-button>
+        </div>
+        <hr class="my-5">
+        <div>
+            <el-button class="file-box" text>
+                <input type="file" ref="mfInput" class="file-btn"  @change="onChange3mfInput" />{{ mfName }}
+            </el-button>
+            <el-button @click="on3mfFile()" type="primary" :loading="mfLoading">Confirm upload 3mg</el-button>
+        </div>
+    </div>
+</div>
+</body>
+<!-- import Vue before Element -->
+<script src="js/vue.min.js"></script>
+<!-- import JavaScript -->
+<script src="js/axios.min.js"></script>
+<script src="js/element-ui.js"></script>
+<script src="js/dayjs.min.js"></script>
+<script src="js/base.js"></script>
+<script>
+  new Vue({
+    el: '#app',
+    data: function() {
+      return {
+        gcodeLoading: false,
+        mfLoading: false,
+        mfName: 'Select the 3mf file',
+        gcodeName: 'Select the Gcode file',
+        containQuantity: 1,
+        ssid: '',
+        orgId: '',
+        token: ''
+      }
+    },
+    mounted() {
+      this.token = localStorage.getItem('token')
+      if(!this.token) {
+        window.location.href = "./login.html"
+      }
+      const date = new Date()
+      const loginData = JSON.parse(localStorage.getItem('loginData'))
+      this.orgId = localStorage.getItem('orgId')
+      if(loginData.expiration * 1000 - date.getTime() < 0) {
+        window.location.href = "./login.html"
+      }
+      this.ssid = generateRandomId(10)
+      console.log(this.ssid)
+    },
+    methods: {
+      on3mfFile() {
+        if(!this.$refs.mfInput.files[0]) {
+          this.$message({ 'message': 'Please upload the 3mf file!', 'type': 'error' })
+        }
+        this.onUpload3mf()
+      },
+      onUGcodeFile() {
+        if(!this.$refs.gcodeInput.files[0]) {
+          this.$message({ 'message': 'Please upload the Gcode file!', 'type': 'error' })
+
+        }
+        this.onUploadGcode()
+      },
+      onChangeGcodeInput() {
+        const file = this.$refs.gcodeInput.files[0]
+        this.gcodeName = file.name
+      },
+      onChange3mfInput() {
+        const file = this.$refs.mfInput.files[0]
+        this.mfName = file.name
+      },
+      onUploadGcode() {
+        const file = this.$refs.gcodeInput.files[0]
+        this.gcodeLoading = true
+        const formData = new FormData()
+        const projectId = localStorage.getItem('projectId')
+        const fileName = file.name.substring(0, file.name.indexOf('.'))
+        const fileExtension = (file.name.split('.').pop()).toLowerCase()
+        // return false
+        formData.append('fileName', fileName)
+        formData.append('fileExtension', fileExtension)
+        formData.append('projectId', projectId)
+        formData.append('containQuantity', 1)
+        formData.append('thumbnailUrl', '')
+        formData.append('file', file, file.name)
+        formData.append('source', 'orcaSlice')
+        const config = {
+          method: 'POST',
+          url: UPLOAD_API + '/cloudStorage/api/uploadGcodeFile',
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': 'Bearer ' + this.token
+          },
+          data: formData,
+          // params: { orgId: '' },
+        };
+        axios(config).then(response => {
+          this.$message({
+            message: 'The Gcode file is uploaded successfully.',
+            type: 'success'
+          });
+        }).catch(() => {
+          this.$message({ 'message': 'Description Failed to upload the gcode file!', 'type': 'error' })
+          this.gcodeLoading = false
+        })
+      },
+      onUpload3mf() {
+        this.mfLoading = true
+        const file = this.$refs.mfInput.files[0]
+        const formData = new FormData();
+        const projectId = localStorage.getItem('projectId')
+        formData.append('projectId', projectId)
+        formData.append('orgId', this.orgId)
+        formData.append('file', file, file.name)
+        const config = {
+          method: 'POST',
+          url: BASE_API + '/cloudStorage/orca/upload3mfFile',
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': 'Bearer ' + this.token
+          },
+          data: formData
+          // params: { orgId: '' },
+        };
+        axios(config).then(response => {
+          this.$message({
+            message: 'The 3mf file is uploaded successfully.',
+            type: 'success'
+          });
+          this.mfLoading = false
+          console.log(response)
+        }).catch(() => {
+          this.$message({ 'message': 'Description Failed to upload the 3mf file!', 'type': 'error' })
+          this.mfLoading = false
+        })
+      }
+    }
+  })
+</script>
+</html>

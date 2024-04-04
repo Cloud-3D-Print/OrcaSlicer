@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <!-- import CSS -->
+    <link rel="stylesheet" href="./fonts/iconfont/iconfont.css">
+    <link rel="stylesheet" href="./css/element-ui.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="stylesheet" href="./css/signIn.css">
+</head>
+<body>
+<div id="app">
+    <div class="c3p-head clearfix">
+        <div class="c3p-logo fl">
+            <h1><i class="cp cp-slice-logo text-primary font-size-24 mr-1"></i>Cloud 3D Print</h1>
+        </div>
+        <div class="c3p-title fr">
+            <p class="text-primary font-size-16 pt-4">2.1.10</p>
+        </div>
+    </div>
+    <div class="c3p-login-main">
+        <div class="c3p-login-form">
+            <el-form ref="loginForm" auto-complete="on" label-position="left" @submit.native.prevent>
+                <div class="login-title-container pb-5">
+                    <h3 class="title text-left mb-4"><span>{{ title }}</span></h3>
+                </div>
+                <el-form-item prop="email" class="mb-2">
+                    <label class="el-form-label">Email <span>*</span></label>
+                    <el-input
+                            ref="email"
+                            v-model="loginForm.email"
+                            :disabled="isCodeSend"
+                            prefix-icon="el-icon-message"
+                            placeholder="Please enter email"
+                            name="email"
+                            type="text"
+                            tabindex="1"
+                            auto-complete="off"
+                            @input="onChangeVerifyEmail"
+                            @keydown.native="keydown($event)"
+                            @keyup.enter.native="onSendEmail()"
+                    >
+                    </el-input>
+                </el-form-item>
+                <div v-if="isCodeSend">
+                    <p class="mb-5 text-gray9 font-size-12">We just sent you a temporary sign up code. Please check your inbox and paste the sign up code below.</p>
+                    <el-form-item prop="code" class="mb-2">
+                        <label class="el-form-label">{{ codebtn }} <span>*</span></label>
+                        <el-input
+                                ref="code"
+                                v-model="loginForm.code"
+                                placeholder="Please enter email"
+                                prefix-icon="el-icon-chat-dot-square"
+                                name="code"
+                                type="text"
+                                tabindex="2"
+                                maxlength="6"
+                                auto-complete="off"
+                                @keydown.native="keydown($event)"
+                                @keyup.enter.native="handleLogin()"
+                        >
+                        </el-input>
+                        <el-link v-if="codeShow" class="resend-btn" type="primary" @click="onSendCode">Resend</el-link>
+                        <el-link v-else class="resend-btn">{{ codeCount }} s</el-link>
+                    </el-form-item>
+                </div>
+                <!--  login failure 5 times show recapture
+                <div v-show="isNext" class="content-google mt-4">
+                    <GRecaptcha ref="recaptcha" :site-key="key" @getValidateCode="getValidateCode" />
+                </div>-->
+                <div v-if="isCodeSend" class="mt-4">
+                    <el-checkbox v-model="storageTime">Don’t ask me for the code for 7 days</el-checkbox>
+                </div>
+                <el-button v-if="isCodeSend" :loading="loading" :disabled="loginForm.code.length !== 6" class="login-btn mt-5" type="primary" @click.native.prevent="handleLogin">Login</el-button>
+                <el-button v-else :loading="loading" :disabled="!verifyEmail" class="login-btn mt-5" type="primary" @click.native.prevent="onSendEmail">Continue with email</el-button>
+                <div class="text-right mt-4">
+                    <span>New to Cloud 3D Print? <el-link type="primary">One-click sign up</el-link></span>
+                    <!--<span>Already have an account? <el-link type="primary">Sign in</el-link></span>-->
+                </div>
+            </el-form>
+            <div class="login-form-or">
+                <h4><span>{{ text }}</span></h4>
+                <div class="clearfix">
+                    <!-- <g-signin-button :params="googleSignInParams" class="or-btn" @success="onGoogleSuccess" @error="onGoogleError"><svg class="cp" aria-hidden="true"><use xlink:href="#cp-google" /></svg>Continue with Google</g-signin-button>
+                    <fb-signin-button :params="fbSignInParams" class="or-btn float-right facebook" @success="onFacebookSuccess" @error="onFacebookError"><i class="cp cp-facebook3" />{{ $t('views.login.cwf') }}</fb-signin-button>-->
+                </div>
+            </div>
+            <p class="font-size-12 text-gray9 text-center mt-10">
+                By clicking “Sign up” or “Continue with Google/Facebook” above, you acknowledge that you have read and understood, and agreed to Cloud 3D Print’s <a class="text-primary" href="https://www.cloud3dprint.com/terms-conditions/" target="_blank">Terms & Conditions</a> and <a class="text-primary" href="https://www.cloud3dprint.com/privacy-policy/" target="_blank">Privacy Policy</a>.
+            </p>
+        </div>
+    </div>
+    <div class="c3p-login-foot"></div>
+</div>
+</body>
+<!-- 引入 json-bigint -->
+<!-- import Vue before Element -->
+<script src="js/vue.min.js"></script>
+<!-- import JavaScript -->
+<script src="js/axios.min.js"></script>
+<script src="js/element-ui.js"></script>
+<script src="js/base.js"></script>
+
+<script>
+/*--------Studio WX Message-------*/
+function IsInSlicer() {
+  return navigator.userAgent.match(  RegExp('BBL-Slicer','i') );
+}
+
+function SendWXMessage(strMsg) {
+  window.wx.postMessage(strMsg);
+}
+
+  new Vue({
+    el: '#app',
+    data: function() {
+      return {
+        visible: false,
+        title: 'Sign in',
+        text: 'Or sign in with',
+        codebtn: 'Sign in code',
+        googleSignInParams: {
+          client_id: '744695512967-mkatvjjuljgnak9dn444c3bpuu2pkkmh'
+        },
+        fbSignInParams: {
+          scope: 'email,user_likes',
+          return_scopes: true
+        },
+        // key -> google verification key for GRecaptcha, 5 times failure will return it
+        key: '6LeMJsoZAAAAAIwp8BUuL7FV0Nai3kzz-S2IVuCA',
+        storageTime: true,
+        isNext: false,
+        isDisabled: false,
+        verifyEmail: false,
+        isCodeSend: false,
+        loginForm: {
+          email: '',
+          code: ''
+        },
+        // login button loading
+        loading: false,
+        beforeUrl: window.location.href,
+        // for inviting to group, unlogged in/logged in will have diff responses, code will be auto attached when logged in
+        codeTimer: null,
+        codeCount: 60,
+        codeShow: true
+      }
+    },
+    mounted() {
+      this.token = localStorage.getItem('token')
+      const date = new Date()
+      const loginData = JSON.parse(localStorage.getItem('loginData'))
+      if(this.token && loginData.expiration * 1000 - date.getTime() > 0) {
+        window.location.href = "./products.html"
+      }
+    },
+    methods: {
+      onSendEmail() {
+        if (!this.verifyEmail) {
+          this.$message.closeAll()
+          this.$message({ 'message': 'Please enter your login email address.', 'type': 'error' })
+          return false
+        }
+        this.onSendCode()
+      },
+      onSendCode() {
+        const TIME_COUNT = 60
+        if (this.codeShow) {
+          this.loading = true
+          axios.post(BASE_API + '/auth/register', '', {
+            params: {'email':this.loginForm.email}
+          }).then(response => {
+            this.isCodeSend = true
+            this.$message.closeAll()
+            if (response.data.status === 'success') {
+              this.$message({ message: 'Please note that the email has been sent successfully!', type: 'success' })
+            } else {
+              this.$message({ message: 'Mail delivery failed for unknown reason.', type: 'error' })
+              this.codeShow = true
+              clearInterval(this.codeTimer)
+              this.codeTimer = null
+            }
+          }).catch(() => {
+            this.$message({ message: 'Mail delivery failed for unknown reason.', type: 'error' })
+            this.codeShow = true
+            clearInterval(this.codeTimer)
+            this.codeTimer = null
+          }).finally(() => {
+            this.loading = false
+          })
+        }
+        if (!this.codeTimer) {
+          this.codeCount = TIME_COUNT
+          this.codeShow = false
+          this.codeTimer = setInterval(() => {
+            if (this.codeCount > 0 && this.codeCount <= TIME_COUNT) {
+              this.codeCount--
+            } else {
+              this.codeShow = true
+              clearInterval(this.codeTimer)
+              this.codeTimer = null
+            }
+          }, 1000)
+        }
+      },
+      handleLogin() {
+        const _this = this
+        this.loading = true
+        axios.post(BASE_API + '/login', this.loginForm).then(res => {
+          const data = res.data
+          localStorage.setItem('loginData', JSON.stringify(data))
+          localStorage.setItem('token', data.token)
+          //Cloud 3d print wx call here
+         // SendWXLogin(data.token)
+          this.getUserInfo(data)
+        }).catch(() => {
+          _this.$message({ 'message': 'Login failed, invalid code', 'type': 'error' })
+          this.loading = false
+        })
+      },
+      getUserInfo(data) {
+        const _this = this
+        this.loading = true
+        const config = {
+          method: 'get',
+          url: BASE_API + '/profile/getByUser',
+          headers: {
+            'Authorization': 'Bearer ' + data.token
+          },
+          params: { userId: data.userId },
+        };
+        axios(config).then(res => {
+          localStorage.setItem('userInfo', JSON.stringify(res.data))
+          localStorage.setItem('userId', res.data.userId)
+          localStorage.setItem('orgId', res.data.orgList[0].organizationId)
+          localStorage.setItem('storageTime', this.storageTime)
+          window.location.href = "./products.html"
+        }).catch(() => {
+          _this.$message({ 'message': 'Failed to obtain model data!', 'type': 'error' })
+        })
+      },
+      onChangeVerifyEmail() {
+        this.loginForm.email = this.loginForm.email.trim()
+        const valid_email = /^[0-9a-zA-Z][a-zA-Z0-9\._-]{1,}@[a-zA-Z0-9-]{1,}[a-zA-Z0-9](\.[a-z]{1,})+$/
+        this.verifyEmail = valid_email.test(this.loginForm.email)
+      },
+      getValidateCode(value) {
+        this.isDisabled = value
+      },
+      // space cannot be typed
+      keydown(event) {
+        if (event.keyCode === 32) {
+          event.returnValue = false
+        }
+      }
+    }
+  })
+</script>
+</html>

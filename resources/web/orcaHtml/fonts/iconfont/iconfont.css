@@ -1,0 +1,55 @@
+@font-face {
+  font-family: "cp"; /* Project id 4480225 */
+  src: url('iconfont.woff2?t=1712235780498') format('woff2'),
+       url('iconfont.woff?t=1712235780498') format('woff'),
+       url('iconfont.ttf?t=1712235780498') format('truetype');
+}
+
+.cp {
+  font-family: "cp" !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.cp-close:before {
+  content: "\e60d";
+}
+
+.cp-settings-materials:before {
+  content: "\e62e";
+}
+
+.cp-camera:before {
+  content: "\e63a";
+}
+
+.cp-statistics-totalfiles:before {
+  content: "\e640";
+}
+
+.cp-slice-logo:before {
+  content: "\e665";
+}
+
+.cp-print-icon-1:before {
+  content: "\e65b";
+}
+
+.cp-images:before {
+  content: "\e6a5";
+}
+
+.cp-filament-used:before {
+  content: "\e6c6";
+}
+
+.cp-stop:before {
+  content: "\e70e";
+}
+
+.cp-sku:before {
+  content: "\e602";
+}
+

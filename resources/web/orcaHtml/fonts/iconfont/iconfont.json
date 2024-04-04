@@ -1,0 +1,79 @@
+{
+  "id": "4480225",
+  "name": "orcaHtml",
+  "font_family": "cp",
+  "css_prefix_text": "cp-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "17426983",
+      "name": "退出",
+      "font_class": "close",
+      "unicode": "e60d",
+      "unicode_decimal": 58893
+    },
+    {
+      "icon_id": "13053270",
+      "name": "Materials",
+      "font_class": "settings-materials",
+      "unicode": "e62e",
+      "unicode_decimal": 58926
+    },
+    {
+      "icon_id": "13067654",
+      "name": "camera",
+      "font_class": "camera",
+      "unicode": "e63a",
+      "unicode_decimal": 58938
+    },
+    {
+      "icon_id": "17317363",
+      "name": "Total files",
+      "font_class": "statistics-totalfiles",
+      "unicode": "e640",
+      "unicode_decimal": 58944
+    },
+    {
+      "icon_id": "17672212",
+      "name": "c3p-logo",
+      "font_class": "slice-logo",
+      "unicode": "e665",
+      "unicode_decimal": 58981
+    },
+    {
+      "icon_id": "17915970",
+      "name": "print-icon-1",
+      "font_class": "print-icon-1",
+      "unicode": "e65b",
+      "unicode_decimal": 58971
+    },
+    {
+      "icon_id": "19916643",
+      "name": "3342176 1",
+      "font_class": "images",
+      "unicode": "e6a5",
+      "unicode_decimal": 59045
+    },
+    {
+      "icon_id": "20795976",
+      "name": "filament-used",
+      "font_class": "filament-used",
+      "unicode": "e6c6",
+      "unicode_decimal": 59078
+    },
+    {
+      "icon_id": "27302238",
+      "name": "stop",
+      "font_class": "stop",
+      "unicode": "e70e",
+      "unicode_decimal": 59150
+    },
+    {
+      "icon_id": "28466375",
+      "name": "sku",
+      "font_class": "sku",
+      "unicode": "e602",
+      "unicode_decimal": 58882
+    }
+  ]
+}

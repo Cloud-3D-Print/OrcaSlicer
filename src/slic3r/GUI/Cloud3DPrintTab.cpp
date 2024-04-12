@@ -95,6 +95,7 @@ void Cloud3DPrintTab::OnScriptMessage(wxWebViewEvent& event)
                     urls.push_back(url);
                 }
 
+
                 std::vector<std::string> outputPaths;
 
                 for (size_t i = 0; i < urls.size(); i++) {
@@ -139,6 +140,31 @@ void Cloud3DPrintTab::OnScriptMessage(wxWebViewEvent& event)
                     }
                 }
 
+                // Persist project id and org id from JSON
+                std::string projectId = data["projectId"];
+                std::string orgId = data["orgId"];
+                // TODO: Persist the project id and org id as needed
+
+                // Print out the two values extracted
+                wxLogMessage("Project ID: %s", projectId.c_str());
+                wxLogMessage("Organization ID: %s", orgId.c_str());
+
+                // Create a JSON object
+                nlohmann::json jsonOutput;
+                jsonOutput["projectId"] = projectId;
+                jsonOutput["orgId"] = orgId;
+
+                // Write JSON to file
+                std::filesystem::path outPath = std::filesystem::current_path() / "orgid.json";
+                std::ofstream outputFile(outPath);
+                if (outputFile.is_open()) {
+                    outputFile << jsonOutput.dump(4); // Indent with 4 spaces
+                    outputFile.close();
+                    wxLogMessage("Project ID and Organization ID written to file: %s", outPath.string().c_str());
+                } else {
+                    wxLogError("Failed to open file for writing: %s", outPath.string().c_str());
+                }
+
                 // Check if all downloaded files exist in the specified paths
                 bool allFilesExist = true;
                 for (const std::string& path : outputPaths) {
@@ -146,6 +172,9 @@ void Cloud3DPrintTab::OnScriptMessage(wxWebViewEvent& event)
                         wxLogError("Downloaded file does not exist: %s", path.c_str());
                         allFilesExist = false;
                         break;
+                    }
+                    else{
+                        wxLogMessage("Downloaded file exists: %s", path.c_str());
                     }
                 }
 

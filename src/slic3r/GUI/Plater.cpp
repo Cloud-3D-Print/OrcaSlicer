@@ -10824,6 +10824,102 @@ void Plater::export_gcode(bool prefer_removable)
     }
 }
 
+std::string Plater::export_gcode_path(bool prefer_removable)
+{
+    //if (get_view3D_canvas3D()->get_gizmos_manager().is_in_editing_mode(true))
+    //    return;
+
+    // If possible, remove accents from accented latin characters.
+    // This function is useful for generating file names to be processed by legacy firmwares.
+    fs::path default_output_file;
+    try {
+        // Update the background processing, so that the placeholder parser will get the correct values for the ouput file template.
+        // Also if there is something wrong with the current configuration, a pop-up dialog will be shown and the export will not be performed.
+        unsigned int state = this->p->update_restart_background_process(false, false);
+        if (state & priv::UPDATE_BACKGROUND_PROCESS_INVALID)
+            return "";
+        default_output_file = this->p->background_process.output_filepath_for_project("");
+    } catch (const Slic3r::PlaceholderParserError &ex) {
+        // Show the error with monospaced font.
+        show_error(this, ex.what(), true);
+        return "";
+    } catch (const std::exception &ex) {
+        show_error(this, ex.what(), false);
+        return "";
+    }
+    default_output_file = fs::path(Slic3r::fold_utf8_to_ascii(default_output_file.string()));
+    AppConfig 				&appconfig 				 = *wxGetApp().app_config;
+    RemovableDriveManager 	&removable_drive_manager = *wxGetApp().removable_drive_manager();
+    // Get a last save path, either to removable media or to an internal media.
+    std::string      		 start_dir 				 = appconfig.get_last_output_dir(default_output_file.parent_path().string(), prefer_removable);
+    if (prefer_removable) {
+        // Returns a path to a removable media if it exists, prefering start_dir. Update the internal removable drives database.
+        start_dir = removable_drive_manager.get_removable_drive_path(start_dir);
+        if (start_dir.empty())
+            // Direct user to the last internal media.
+            start_dir = appconfig.get_last_output_dir(default_output_file.parent_path().string(), false);
+    }
+
+    fs::path output_path;
+    {
+        std::string ext = default_output_file.extension().string();
+        wxFileDialog dlg(this, (printer_technology() == ptFFF) ? _L("Save G-code file as:") : _L("Save SLA file as:"),
+            start_dir,
+            from_path(default_output_file.filename()),
+            GUI::file_wildcards((printer_technology() == ptFFF) ? FT_GCODE : FT_SL1, ext),
+            wxFD_SAVE | wxFD_OVERWRITE_PROMPT
+        );
+        if (dlg.ShowModal() == wxID_OK) {
+            output_path = into_path(dlg.GetPath());
+            while (has_illegal_filename_characters(output_path.filename().string())) {
+                show_error(this, _L("The provided file name is not valid.") + "\n" +
+                    _L("The following characters are not allowed by a FAT file system:") + " <>:/\\|?*\"");
+                dlg.SetFilename(from_path(output_path.filename()));
+                if (dlg.ShowModal() == wxID_OK)
+                    output_path = into_path(dlg.GetPath());
+                else {
+                    output_path.clear();
+                    break;
+                }
+            }
+        }
+    }
+
+    if (! output_path.empty()) {
+        bool path_on_removable_media = removable_drive_manager.set_and_verify_last_save_path(output_path.string());
+        //bool path_on_removable_media = false;
+        p->notification_manager->new_export_began(path_on_removable_media);
+        p->exporting_status = path_on_removable_media ? ExportingStatus::EXPORTING_TO_REMOVABLE : ExportingStatus::EXPORTING_TO_LOCAL;
+        p->last_output_path = output_path.string();
+        p->last_output_dir_path = output_path.parent_path().string();
+        p->export_gcode(output_path, path_on_removable_media);
+        // Storing a path to AppConfig either as path to removable media or a path to internal media.
+        // is_path_on_removable_drive() is called with the "true" parameter to update its internal database as the user may have shuffled the external drives
+        // while the dialog was open.
+        appconfig.update_last_output_dir(output_path.parent_path().string(), path_on_removable_media);
+
+        try {
+            json j;
+            auto printer_config = Slic3r::GUI::wxGetApp().preset_bundle->printers.get_edited_preset_with_vendor_profile().preset;
+            if (printer_config.is_system) {
+                j["printer_preset"] = printer_config.name;
+            } else {
+                j["printer_preset"] = printer_config.config.opt_string("inherits");
+            }
+
+            PresetBundle *preset_bundle = wxGetApp().preset_bundle;
+            if (preset_bundle) {
+                j["gcode_printer_model"] = preset_bundle->printers.get_edited_preset().get_printer_type(preset_bundle);
+            }
+            NetworkAgent *agent = wxGetApp().getAgent();
+        } catch (...) {}
+
+    }
+
+
+    return output_path.string();
+}
+
 
 void Plater::send_to_printer(bool isall)
 {
@@ -10920,6 +11016,18 @@ void Plater::export_core_3mf()
     if (path.empty()) { return; }
     const std::string path_u8 = into_u8(path);
     export_3mf(path_u8, SaveStrategy::Silence);
+}
+
+std::string Plater::export_core_3mf_path()
+{
+    wxString path = p->get_export_file(FT_3MF);
+    if (path.empty()) {
+        return "";
+    }
+    const std::string path_u8 = into_u8(path);
+    export_3mf(path_u8, SaveStrategy::Silence);
+
+    return path_u8;
 }
 
 // Following lambda generates a combined mesh for export with normals pointing outwards.

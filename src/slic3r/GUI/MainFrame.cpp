@@ -1,12 +1,12 @@
 ///|/ Copyright (c) Prusa Research 2018 - 2023 Oleksandra Iushchenko @YuSanka, Lukáš Matěna @lukasmatena, David Kocík @kocikdav, Vojtěch
-///Bubník @bubnikv, Tomáš Mészáros @tamasmeszaros, Enrico Turri @enricoturri1966, Filip Sykala @Jony01, Lukáš Hejl @hejllukas, Vojtěch Král
+/// Bubník @bubnikv, Tomáš Mészáros @tamasmeszaros, Enrico Turri @enricoturri1966, Filip Sykala @Jony01, Lukáš Hejl @hejllukas, Vojtěch Král
 ///@vojtechkral
 ///|/ Copyright (c) 2021 Jason Scurtu @xarbit
 ///|/ Copyright (c) 2019 John Drake @foxox
 ///|/
 ///|/ ported from lib/Slic3r/GUI/MainFrame.pm:
 ///|/ Copyright (c) Prusa Research 2016 - 2019 Vojtěch Bubník @bubnikv, Vojtěch Král @vojtechkral, Oleksandra Iushchenko @YuSanka, Tomáš
-///Mészáros @tamasmeszaros, Enrico Turri @enricoturri1966
+/// Mészáros @tamasmeszaros, Enrico Turri @enricoturri1966
 ///|/ Copyright (c) Slic3r 2014 - 2016 Alessandro Ranellucci @alranel
 ///|/ Copyright (c) 2014 Mark Hindess
 ///|/
@@ -116,8 +116,7 @@ public:
         // if (wxGetApp().app_config->get("single_instance") == "false") {
         //  Only allow opening a new PrusaSlicer instance on OSX if "single_instance" is disabled,
         //  as starting new instances would interfere with the locking mechanism of "single_instance" support.
-        append_menu_item(
-            menu, wxID_ANY, _L("New Window"), _L("Open a new window"), [](wxCommandEvent&) { start_new_slicer(); }, "", nullptr);
+        append_menu_item(menu, wxID_ANY, _L("New Window"), _L("Open a new window"), [](wxCommandEvent&) { start_new_slicer(); }, "", nullptr);
         //}
         //        append_menu_item(menu, wxID_ANY, _L("G-code Viewer") + dots, _L("Open G-code Viewer"),
         //            [](wxCommandEvent&) { start_new_gcodeviewer_open_file(); }, "", nullptr);
@@ -457,19 +456,20 @@ MainFrame::MainFrame()
         }
 
 #if 0 // BBS
-        //if (m_plater != nullptr) {
-        //    int saved_project = m_plater->save_project_if_dirty(_L("Closing Application. Current project is modified."));
-        //    if (saved_project == wxID_CANCEL) {
-        //        event.Veto();
-        //        return;
-        //    }
-        //    // check unsaved changes only if project wasn't saved
-        //    else if (plater()->is_project_dirty() && saved_project == wxID_NO && event.CanVeto() &&
-        //             (plater()->is_presets_dirty() && !wxGetApp().check_and_save_current_preset_changes(_L("Application is closing"), _L("Closing Application while some presets are modified.")))) {
-        //        event.Veto();
-        //        return;
-        //    }
-        //}
+      // if (m_plater != nullptr) {
+      //    int saved_project = m_plater->save_project_if_dirty(_L("Closing Application. Current project is modified."));
+      //    if (saved_project == wxID_CANCEL) {
+      //        event.Veto();
+      //        return;
+      //    }
+      //    // check unsaved changes only if project wasn't saved
+      //    else if (plater()->is_project_dirty() && saved_project == wxID_NO && event.CanVeto() &&
+      //             (plater()->is_presets_dirty() && !wxGetApp().check_and_save_current_preset_changes(_L("Application is closing"),
+      //             _L("Closing Application while some presets are modified.")))) {
+      //        event.Veto();
+      //        return;
+      //    }
+      //}
 #endif
 
         MarkdownTip::ExitTip();
@@ -1099,7 +1099,7 @@ void MainFrame::init_tabpanel()
             select_tab(MainFrame::tpHome);
             m_webview->load_url(url);
         });
-        m_tabpanel->AddPage(m_webview, "", "tab_home_active", "tab_home_active", false);
+        // m_tabpanel->AddPage(m_webview, "", "tab_home_active", "tab_home_active", false);
         m_param_panel = new ParamsPanel(m_tabpanel, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBK_LEFT | wxTAB_TRAVERSAL);
     }
 
@@ -1109,33 +1109,29 @@ void MainFrame::init_tabpanel()
 
     wxGetApp().plater_ = m_plater;
 
-    create_preset_tabs();
-
-    // BBS add pages
-    m_monitor = new MonitorPanel(m_tabpanel, wxID_ANY, wxDefaultPosition, wxDefaultSize);
-    m_monitor->SetBackgroundColour(*wxWHITE);
-    m_tabpanel->AddPage(m_monitor, _L("Device"), std::string("tab_monitor_active"), std::string("tab_monitor_active"), false);
-
-    m_printer_view = new PrinterWebView(m_tabpanel);
-    Bind(EVT_LOAD_PRINTER_URL, [this](LoadPrinterViewEvent& evt) {
-        wxString url = evt.GetString();
-        wxString key = evt.GetAPIkey();
-        // select_tab(MainFrame::tpMonitor)  ;
-        m_printer_view->load_url(url, key);
-    });
-    m_printer_view->Hide();
-
-    m_project = new ProjectPanel(m_tabpanel, wxID_ANY, wxDefaultPosition, wxDefaultSize);
-    m_project->SetBackgroundColour(*wxWHITE);
-    m_tabpanel->AddPage(m_project, _L("Project"), std::string("tab_auxiliary_avtice"), std::string("tab_auxiliary_avtice"), false);
-
     m_c3dp = new Cloud3DPrintTab(m_tabpanel, m_plater, wxID_ANY, wxDefaultPosition, wxDefaultSize);
     m_c3dp->SetBackgroundColour(*wxWHITE);
     m_tabpanel->AddPage(m_c3dp, _L("Cloud 3D Print"), std::string("tab_auxiliary_avtice"), std::string("tab_auxiliary_avtice"), false);
 
-    m_calibration = new CalibrationPanel(m_tabpanel, wxID_ANY, wxDefaultPosition, wxDefaultSize);
-    m_calibration->SetBackgroundColour(*wxWHITE);
-    m_tabpanel->AddPage(m_calibration, _L("Calibration"), std::string("tab_monitor_active"), std::string("tab_monitor_active"), false);
+    create_preset_tabs();
+
+    // BBS add pages
+    // m_monitor = new MonitorPanel(m_tabpanel, wxID_ANY, wxDefaultPosition, wxDefaultSize);
+    // m_monitor->SetBackgroundColour(*wxWHITE);
+    // m_tabpanel->AddPage(m_monitor, _L("Device"), std::string("tab_monitor_active"), std::string("tab_monitor_active"), false);
+
+    // m_printer_view = new PrinterWebView(m_tabpanel);
+    // Bind(EVT_LOAD_PRINTER_URL, [this](LoadPrinterViewEvent& evt) {
+    //     wxString url = evt.GetString();
+    //     wxString key = evt.GetAPIkey();
+    //     // select_tab(MainFrame::tpMonitor)  ;
+    //     m_printer_view->load_url(url, key);
+    // });
+    // m_printer_view->Hide();
+
+    // m_calibration = new CalibrationPanel(m_tabpanel, wxID_ANY, wxDefaultPosition, wxDefaultSize);
+    // m_calibration->SetBackgroundColour(*wxWHITE);
+    // m_tabpanel->AddPage(m_calibration, _L("Calibration"), std::string("tab_monitor_active"), std::string("tab_monitor_active"), false);
 
     if (m_plater) {
         // load initial config
@@ -1171,9 +1167,11 @@ void MainFrame::show_device(bool bBBLPrinter)
             m_printer_view->Show();
             m_monitor->Show(false);
             m_tabpanel->RemovePage(tpMonitor);
-            m_tabpanel->InsertPage(tpMonitor, m_printer_view, _L("Device"), std::string("tab_monitor_active"),
-                                   std::string("tab_monitor_active"));
-            // m_tabpanel->SetSelection(tp3DEditor);
+            m_tabpanel->RemovePage(tpProject);
+            m_tabpanel->RemovePage(tpCalibration);
+            // m_tabpanel->InsertPage(tpMonitor, m_printer_view, _L("Device"), std::string("tab_monitor_active"),
+            //                        std::string("tab_monitor_active"));
+            //  m_tabpanel->SetSelection(tp3DEditor);
         }
     }
 }
@@ -1239,8 +1237,8 @@ void MainFrame::register_win32_callbacks()
                                                             1,                    // Number of entries in the pfsne array
                                                             &shCNE);              // Array of SHChangeNotifyEntry structures that
                                                                                   // contain the notifications. This array should
-                                                                     // always be set to one when calling SHChnageNotifyRegister
-                                                                     // or SHChangeNotifyDeregister will not work properly.
+        // always be set to one when calling SHChnageNotifyRegister
+        // or SHChangeNotifyDeregister will not work properly.
         assert(m_ulSHChangeNotifyRegister != 0); // Shell notification failed
     } else {
         // Failed to get desktop location
@@ -1348,6 +1346,84 @@ static size_t read_callback(char* buffer, size_t size, size_t nitems, void* inst
     return stream->gcount();
 }
 
+/**
+ *
+#include <stdio.h>
+#include <curl/curl.h>
+
+void upload_file(char *url, char *filepath, char *filename, char *fileExtension, char *projectId, char *token) {
+    CURL *curl;
+    CURLcode res;
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+
+    curl = curl_easy_init();
+    if(curl) {
+        struct curl_httppost *formpost=NULL;
+        struct curl_httppost *lastptr=NULL;
+        struct curl_slist *headerlist=NULL;
+        static const char buf[] = "Expect:";
+
+        // Add the file to the form
+        curl_formadd(&formpost,
+                     &lastptr,
+                     CURLFORM_COPYNAME, "file",
+                     CURLFORM_FILE, filepath,
+                     CURLFORM_END);
+
+        // Add other form data
+        curl_formadd(&formpost,
+                     &lastptr,
+                     CURLFORM_COPYNAME, "fileName",
+                     CURLFORM_COPYCONTENTS, filename,
+                     CURLFORM_END);
+
+        // Add more form data as needed...
+
+        // Add headers
+        headerlist = curl_slist_append(headerlist, buf);
+        headerlist = curl_slist_append(headerlist, "Content-Type: multipart/form-data");
+        char auth_header[100];
+        sprintf(auth_header, "Authorization: Bearer %s", token);
+        headerlist = curl_slist_append(headerlist, auth_header);
+
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);
+
+        res = curl_easy_perform(curl);
+
+        if(res != CURLE_OK)
+            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+
+        curl_easy_cleanup(curl);
+
+        curl_formfree(formpost);
+        curl_slist_free_all (headerlist);
+    }
+
+    curl_global_cleanup();
+}
+
+int main(void)
+{
+    // Upload Gcode file
+    upload_file("http://example.com/uploadGcodeFile", "/path/to/your/file.gcode", "dummyFileName", "gcode", "dummyProjectId", "dummyToken");
+
+    // Upload 3mf file
+    upload_file("http://example.com/upload3mfFile", "/path/to/your/file.3mf", "dummyFileName", "3mf", "dummyProjectId", "dummyToken");
+
+    return 0;
+}
+*/
+
+static int DebugCallback(CURL* handle, curl_infotype type, char* data, size_t size, void* userptr)
+{
+    // Log the debug information
+    wxLogMessage("HTTP Request: %.*s", size, data);
+    return 0;
+}
+
 // Define the callback function
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::string* userp)
 {
@@ -1355,50 +1431,197 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::stri
     return size * nmemb;
 }
 
+// bool MainFrame::upload_gcode_c3dp()
+// {
+//     wxString fileName = m_plater->get_project_filename(".gcode");
+//     m_plater->export_gcode(false);
+//     wxString gcodeFilePath = m_plater->get_export_gcode_filename(".gcode");
+//     wxLogMessage("Gcode file path: %s", gcodeFilePath);
+//     if (gcodeFilePath.IsEmpty()) {
+//         wxLogMessage("Failed to get exported gcode file path.");
+//         return false;
+//     }
+
+//     std::filesystem::path inPath = std::filesystem::current_path() / "orgid.json";
+//     std::ifstream         file(inPath.generic_string(), std::ifstream::binary);
+//     if (!file.is_open()) {
+//         std::cerr << "Failed to open file: " << inPath.generic_string() << std::endl;
+//         wxLogMessage("Failed to open file for reading: %s", inPath.generic_string());
+//         return false;
+//     }
+
+//     std::string fileContents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+//     file.close();
+
+//     // Use the file contents as needed
+//     std::string projectId;
+//     std::string orgId;
+
+//     nlohmann::json jsonOutput;
+//     try {
+//         nlohmann::json jsonData = nlohmann::json::parse(fileContents);
+//         projectId               = jsonData["projectId"];
+//         orgId                   = jsonData["orgId"];
+//         jsonOutput["projectId"] = projectId;
+//         jsonOutput["orgId"]     = orgId;
+//     } catch (const std::exception& e) {
+//         std::cerr << "Failed to parse JSON: " << e.what() << std::endl;
+//         wxLogMessage("Failed to parse JSON: %s", e.what());
+//         return false;
+//     }
+
+//     // Initialize CURL for the upload
+//     CURL* curl = curl_easy_init();
+//     if (!curl) {
+//         wxLogMessage("Failed to initialize CURL.");
+//         return false;
+//     }
+
+//     // Random UUID generator
+//     boost::uuids::random_generator generator;
+//     boost::uuids::uuid             uuid = generator();
+
+//     // Response buffer
+
+//     std::string readBuffer; // This will hold the response data
+
+//     // Set up the form data
+//     struct curl_httppost* formpost = NULL;
+//     struct curl_httppost* lastptr  = NULL;
+
+//     std::string fileNameNE = gcodeFilePath.c_str();
+//     fs::path    filePath(gcodeFilePath);
+//     fileNameNE = filePath.stem().string();
+
+//     wxLogMessage("File name: %s", fileNameNE);
+
+//     wxLogMessage("Added file: %s", gcodeFilePath.c_str());
+//     curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "file", CURLFORM_FILE, gcodeFilePath.c_str(), CURLFORM_END);
+
+//     wxLogMessage("Added fileName: %s", fileNameNE);
+//     curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "fileName", CURLFORM_COPYCONTENTS, fileNameNE, CURLFORM_END);
+
+//     wxLogMessage("Added fileExtension: .gcode");
+//     curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "fileExtension", CURLFORM_COPYCONTENTS, ".gcode", CURLFORM_END);
+
+//     wxLogMessage("Added containQuantity: 1");
+//     curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "containQuantity", CURLFORM_COPYCONTENTS, "1", CURLFORM_END);
+
+//     wxLogMessage("Added thumbnailUrl: ");
+//     curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "thumbnailUrl", CURLFORM_COPYCONTENTS, "", CURLFORM_END);
+
+//     wxLogMessage("Added source: orcaSlice");
+//     curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "source", CURLFORM_COPYCONTENTS, "orcaSlice", CURLFORM_END);
+
+//     wxLogMessage("Added projectId: %s", projectId);
+//     curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "projectId", CURLFORM_COPYCONTENTS, projectId, CURLFORM_END);
+
+//     // Set the URL and other options
+//     curl_easy_setopt(curl, CURLOPT_URL, "https://tx-msggw.cloud3dprint.com/fs-api/cloudStorage/api/uploadGcodeFile");
+//     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+//     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+//     curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+//     curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, DebugCallback);
+//     curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
+//     curl_easy_setopt(curl, CURLOPT_POST, 1L);
+//     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+//     curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, DebugCallback);
+//     curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
+
+//     // Include the Authorization header
+//     std::string token;
+//     std::string filename = "token.json";
+//     if (std::filesystem::exists(filename)) {
+//         std::ifstream tokenFile(filename);
+//         if (tokenFile.is_open()) {
+//             std::string tokenJson((std::istreambuf_iterator<char>(tokenFile)), std::istreambuf_iterator<char>());
+//             tokenFile.close();
+
+//             try {
+//                 nlohmann::json tokenData = nlohmann::json::parse(tokenJson);
+//                 token                    = tokenData["token"];
+//             } catch (const std::exception& e) {
+//                 std::cerr << "Failed to parse token JSON: " << e.what() << std::endl;
+//                 wxLogMessage("Failed to parse token JSON: %s", e.what());
+//                 return false;
+//             }
+//         } else {
+//             std::cerr << "Failed to open token file: " << filename << std::endl;
+//             wxLogMessage("Failed to open token file: %s", filename);
+//             return false;
+//         }
+//     }
+
+//    std::string content_type = "Content-Type: multipart/form-data";
+
+//     struct curl_slist* headers = NULL;
+//     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+//     headers = curl_slist_append(headers, ("Authorization: Bearer " + token).c_str());
+//     headers = curl_slist_append(headers, content_type.c_str());
+
+//     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+//     // Perform the file upload
+//     CURLcode res = curl_easy_perform(curl);
+//     if (res != CURLE_OK) {
+//         fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+//         wxLogMessage("curl_easy_perform() failed: %s", curl_easy_strerror(res));
+//         // Cleanup
+//         curl_easy_cleanup(curl);
+//         curl_formfree(formpost);
+//         curl_slist_free_all(headers);
+//         return false;
+//     }
+
+//     // Log the server response
+//     wxLogMessage("Server response: %s", readBuffer);
+//     // Log successful upload
+//     wxLogMessage("File upload successful.");
+
+//     // Cleanup
+//     curl_easy_cleanup(curl);
+//     curl_formfree(formpost);
+//     curl_slist_free_all(headers);
+
+//     return true;
+// }
+
 bool MainFrame::upload_gcode_c3dp()
 {
+    // Get the file name and path for the G-code
     wxString fileName = m_plater->get_project_filename(".gcode");
-    m_plater->export_gcode(false);
-    wxString gcodeFilePath = m_plater->get_export_gcode_filename(".gcode");
+    wxLogMessage("Project file name: %s", fileName);
+    std::string gcodePath     = m_plater->export_gcode_path(false);
+    wxString    gcodeFilePath = m_plater->get_export_gcode_filename(".gcode");
     wxLogMessage("Gcode file path: %s", gcodeFilePath);
+    wxLogMessage("Gcode path: %s", gcodePath);
+
     if (gcodeFilePath.IsEmpty()) {
         wxLogMessage("Failed to get exported gcode file path.");
         return false;
     }
 
-    // Initialize CURL for the upload
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        wxLogMessage("Failed to initialize CURL.");
+    // Load and parse the organization ID JSON
+    std::filesystem::path inPath = std::filesystem::current_path() / "orgid.json";
+    std::ifstream         file(inPath.generic_string(), std::ifstream::binary);
+    if (!file.is_open()) {
+        wxLogMessage("Failed to open file for reading: %s", inPath.generic_string());
         return false;
     }
 
-    // Random UUID generator
-    boost::uuids::random_generator generator;
-    boost::uuids::uuid             uuid = generator();
+    std::string fileContents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    file.close();
 
-    // Response buffer
+    std::string projectId, orgId;
+    try {
+        nlohmann::json jsonData = nlohmann::json::parse(fileContents);
+        projectId               = jsonData["projectId"];
+        orgId                   = jsonData["orgId"];
+    } catch (const std::exception& e) {
+        wxLogMessage("Failed to parse JSON: %s", e.what());
+        return false;
+    }
 
-    std::string readBuffer; // This will hold the response data
-
-    // Set up the form data
-    struct curl_httppost* formpost = NULL;
-    struct curl_httppost* lastptr  = NULL;
-    curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "file", CURLFORM_FILE, gcodeFilePath.c_str(), CURLFORM_END);
-
-    // Add other form fields
-    curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "ssId", CURLFORM_COPYCONTENTS, to_string(uuid).c_str(), CURLFORM_END);
-
-    curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "fileName", CURLFORM_COPYCONTENTS, gcodeFilePath.c_str(), CURLFORM_END);
-
-    curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "orgId", CURLFORM_COPYCONTENTS, "0", CURLFORM_END);
-
-    // Set the URL and other options
-    curl_easy_setopt(curl, CURLOPT_URL, "https://tx-pm.cloud3dprint.com:8443/uploadGcodeFile");
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-
-    // Include the Authorization header
     std::string token;
     std::string filename = "token.json";
     if (std::filesystem::exists(filename)) {
@@ -1422,45 +1645,116 @@ bool MainFrame::upload_gcode_c3dp()
         }
     }
 
-    struct curl_slist* headers = NULL;
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    headers = curl_slist_append(headers, ("Authorization: Bearer " + token).c_str());
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    std::string fileNameNE = gcodeFilePath.c_str();
+    fs::path    filePath(gcodeFilePath);
+    fileNameNE = filePath.stem().string();
 
-    // Perform the file upload
-    CURLcode res = curl_easy_perform(curl);
-    if (res != CURLE_OK) {
-        fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
-        wxLogMessage("curl_easy_perform() failed: %s", curl_easy_strerror(res));
-        // Cleanup
-        curl_easy_cleanup(curl);
-        curl_formfree(formpost);
-        curl_slist_free_all(headers);
+    CURL*    curl;
+    CURLcode res;
+    curl = curl_easy_init();
+
+    std::string readBuffer; // This will hold the response data
+
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_easy_setopt(curl, CURLOPT_URL, "https://tx-msggw.cloud3dprint.com/fs-api/cloudStorage/api/uploadGcodeFile");
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+        curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, DebugCallback);
+        curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
+        struct curl_slist* headers = NULL;
+        headers                    = curl_slist_append(headers, "User-Agent: Apifox/1.0.0 (https://apifox.com)");
+        headers                    = curl_slist_append(headers, ("Authorization: Bearer " + token).c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_mime*     mime = curl_mime_init(curl);
+        curl_mimepart* part = curl_mime_addpart(mime);
+        curl_mime_name(part, "fileName");
+        curl_mime_data(part, fileNameNE.c_str(), CURL_ZERO_TERMINATED);
+        part = curl_mime_addpart(mime);
+        curl_mime_name(part, "fileExtension");
+        curl_mime_data(part, "gcode", CURL_ZERO_TERMINATED);
+        part = curl_mime_addpart(mime);
+        curl_mime_name(part, "projectId");
+        curl_mime_data(part, projectId.c_str(), CURL_ZERO_TERMINATED);
+        part = curl_mime_addpart(mime);
+        curl_mime_name(part, "containQuantity");
+        curl_mime_data(part, "1", CURL_ZERO_TERMINATED);
+        part = curl_mime_addpart(mime);
+        curl_mime_name(part, "thumbnailUrl");
+        curl_mime_data(part, "", CURL_ZERO_TERMINATED);
+        part = curl_mime_addpart(mime);
+        curl_mime_name(part, "source");
+        curl_mime_data(part, "orcaSlice", CURL_ZERO_TERMINATED);
+        part = curl_mime_addpart(mime);
+        curl_mime_name(part, "file");
+        curl_mime_filedata(part, gcodePath.c_str());
+        curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+
+        curl_mime_name(part, "file");
+        CURLcode fileResult = curl_mime_filedata(part, gcodePath.c_str());
+        if (fileResult != CURLE_OK) {
+            wxLogMessage("Failed to prepare file for upload: %s", curl_easy_strerror(fileResult));
+            curl_easy_cleanup(curl);
+            return false;
+        }
+
+        res = curl_easy_perform(curl);
+
+        if (res != CURLE_OK) {
+            wxLogMessage("CURL failed with error: %s", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return false;
+        } else {
+            wxLogMessage("File uploaded successfully. HTTP response code: %ld");
+        }
+
+        // Check the result of the curl operation
+        if (res != CURLE_OK) {
+            wxLogMessage("CURL failed with error: %s", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            return false;
+        } else {
+            wxLogMessage("File uploaded successfully.");
+        }
+
+        curl_mime_free(mime);
+    } else {
+        wxLogMessage("Failed to initialize CURL.");
         return false;
     }
 
-    // Log the server response
-    wxLogMessage("Server response: %s", readBuffer);
-    // Log successful upload
-    wxLogMessage("File upload successful.");
-
-    // Cleanup
     curl_easy_cleanup(curl);
-    curl_formfree(formpost);
-    curl_slist_free_all(headers);
-
     return true;
+}
+
+static std::string loadAuthToken()
+{
+    std::string   token;
+    std::ifstream tokenFile("token.json");
+    if (tokenFile.is_open()) {
+        std::string tokenJson((std::istreambuf_iterator<char>(tokenFile)), std::istreambuf_iterator<char>());
+        tokenFile.close();
+        try {
+            nlohmann::json tokenData = nlohmann::json::parse(tokenJson);
+            token                    = tokenData["token"];
+        } catch (const std::exception& e) {
+            wxLogMessage("Failed to parse token JSON: %s", e.what());
+        }
+    } else {
+        wxLogMessage("Failed to open token file.");
+    }
+    return token;
 }
 
 bool MainFrame::upload_project_c3dp()
 {
-    wxString fileName = m_plater->get_project_filename(".3mf");
-    bool     ret      = (m_plater != nullptr) ? m_plater->export_3mf(into_path(fileName)) : false;
-    if (!ret) {
-        wxLogMessage("Failed to export .3mf project file.");
-        return false;
-    }
-
+    wxString    fileName     = m_plater->get_project_filename(".3mf");
+    std::string filePathTest = m_plater->export_core_3mf_path();
+    wxLogMessage("Project file path: %s", filePathTest);
     m_plater->reset_project_dirty_after_save();
 
     boost::filesystem::path path = into_path(fileName);
@@ -1475,6 +1769,34 @@ bool MainFrame::upload_project_c3dp()
     if (!file.is_open()) {
         std::cerr << "Failed to open file: " << path.generic_string() << std::endl;
         wxLogMessage("Failed to open project file for reading: %s", path.generic_string());
+        return false;
+    }
+
+    std::filesystem::path inPath = std::filesystem::current_path() / "orgid.json";
+    std::ifstream         file2(inPath.generic_string(), std::ifstream::binary);
+    if (!file2.is_open()) {
+        std::cerr << "Failed to open file: " << inPath.generic_string() << std::endl;
+        wxLogMessage("Failed to open file for reading: %s", inPath.generic_string());
+        return false;
+    }
+
+    std::string fileContents((std::istreambuf_iterator<char>(file2)), std::istreambuf_iterator<char>());
+    file2.close();
+
+    // Use the file contents as needed
+    std::string projectId;
+    std::string orgId;
+
+    nlohmann::json jsonOutput;
+    try {
+        nlohmann::json jsonData = nlohmann::json::parse(fileContents);
+        projectId               = jsonData["projectId"];
+        orgId                   = jsonData["orgId"];
+        jsonOutput["projectId"] = projectId;
+        jsonOutput["orgId"]     = orgId;
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to parse JSON: " << e.what() << std::endl;
+        wxLogMessage("Failed to parse JSON: %s", e.what());
         return false;
     }
 
@@ -1499,6 +1821,7 @@ bool MainFrame::upload_project_c3dp()
                 auto        tokenData = nlohmann::json::parse(tokenJson);
                 std::string token     = tokenData["token"];
                 headers               = curl_slist_append(headers, ("Authorization: Bearer " + token).c_str());
+                headers               = curl_slist_append(headers, "Content-Type: multipart/form-data");
             } catch (const std::exception& e) {
                 std::cerr << "Failed to parse token JSON: " << e.what() << std::endl;
                 wxLogMessage("Failed to parse token JSON: %s", e.what());
@@ -1516,15 +1839,36 @@ bool MainFrame::upload_project_c3dp()
     }
 
     headers = curl_slist_append(headers, "Content-Type: multipart/form-data");
+    std::string readBuffer; // This will hold the response data
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, DebugCallback);
+    curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
     curl_easy_setopt(curl, CURLOPT_URL, "https://tx-pm.cloud3dprint.com:8443/cloudStorage/orca/upload3mfFile");
 
     curl_mime*     mime = curl_mime_init(curl);
-    curl_mimepart* part;
+    curl_mimepart* part = curl_mime_addpart(mime);
 
-    // Add form parts
-    // (Assuming implementation for 'read_callback' and other details are handled elsewhere in the code)
+    curl_mime_name(part, "projectId");
+    curl_mime_data(part, projectId.c_str(), CURL_ZERO_TERMINATED);
+    part = curl_mime_addpart(mime);
+
+    curl_mime_name(part, "orgId");
+    curl_mime_data(part, orgId.c_str(), CURL_ZERO_TERMINATED);
+    
+    part = curl_mime_addpart(mime);
+
+    curl_mime_name(part, "file");
+    curl_mime_filedata(part, filePathTest.c_str());
+
+    //Adds mime to curl
+    curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
 
     CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK) {
@@ -1824,11 +2168,11 @@ wxBoxSizer* MainFrame::create_side_tools()
 
         if (wxGetApp().preset_bundle && !wxGetApp().preset_bundle->is_bbl_vendor()) {
             // ThirdParty Buttons
-            SideButton* export_gcode_btn = new SideButton(p, _L("Export G-code file"), "");
+            SideButton* export_gcode_btn = new SideButton(p, _L("Upload G-Code File"), "");
             export_gcode_btn->SetCornerRadius(0);
             export_gcode_btn->Bind(wxEVT_BUTTON, [this, p](wxCommandEvent&) {
-                m_print_btn->SetLabel(_L("Export G-code file"));
-                m_print_select = eExportGcode;
+                m_print_btn->SetLabel(_L("Upload G-Code File"));
+                upload_gcode_c3dp();
                 m_print_enable = get_enable_print_status();
                 m_print_btn->Enable(m_print_enable);
                 this->Layout();
@@ -1836,16 +2180,16 @@ wxBoxSizer* MainFrame::create_side_tools()
             });
 
             // upload and print
-            SideButton* send_gcode_btn = new SideButton(p, _L("Print"), "");
-            send_gcode_btn->SetCornerRadius(0);
-            send_gcode_btn->Bind(wxEVT_BUTTON, [this, p](wxCommandEvent&) {
-                m_print_btn->SetLabel(_L("Print"));
-                m_print_select = eSendGcode;
-                m_print_enable = get_enable_print_status();
-                m_print_btn->Enable(m_print_enable);
-                this->Layout();
-                p->Dismiss();
-            });
+            // SideButton* send_gcode_btn = new SideButton(p, _L("Print"), "");
+            // send_gcode_btn->SetCornerRadius(0);
+            // send_gcode_btn->Bind(wxEVT_BUTTON, [this, p](wxCommandEvent&) {
+            //     m_print_btn->SetLabel(_L("Print"));
+            //     m_print_select = eSendGcode;
+            //     m_print_enable = get_enable_print_status();
+            //     m_print_btn->Enable(m_print_enable);
+            //     this->Layout();
+            //     p->Dismiss();
+            //});
             // Upload to C3DP
             SideButton* upload_gcode_btn_c3dp = new SideButton(p, _L("Upload G-code file"), "");
             upload_gcode_btn_c3dp->SetCornerRadius(0);
@@ -1856,8 +2200,8 @@ wxBoxSizer* MainFrame::create_side_tools()
             upload_project_btn_c3dp->Bind(wxEVT_BUTTON, [this, p](wxCommandEvent&) { upload_project_c3dp(); });
             p->append_button(upload_gcode_btn_c3dp);
             p->append_button(upload_project_btn_c3dp);
-            p->append_button(send_gcode_btn);
-            p->append_button(export_gcode_btn);
+            // p->append_button(send_gcode_btn);
+            //  p->append_button(export_gcode_btn);
 
         } else {
             // Orca Slicer Buttons
@@ -2388,7 +2732,7 @@ void MainFrame::init_menubar_as_editor()
                 if (m_plater)
                     m_plater->new_project();
             },
-            "", nullptr, [this]() {    return can_start_new_project(); }, this);
+            "", nullptr, [this]() { return can_start_new_project(); }, this);
         // Open Project
 
 #ifndef __APPLE__
@@ -2398,7 +2742,7 @@ void MainFrame::init_menubar_as_editor()
                 if (m_plater)
                     m_plater->load_project();
             },
-            "menu_open", nullptr, [this]() {  return can_open_project(); }, this);
+            "menu_open", nullptr, [this]() { return can_open_project(); }, this);
 #else
         append_menu_item(
             fileMenu, wxID_ANY, _L("Open Project") + dots + "\t" + ctrl + "O", _L("Open a project file"),
@@ -2406,7 +2750,7 @@ void MainFrame::init_menubar_as_editor()
                 if (m_plater)
                     m_plater->load_project();
             },
-            "", nullptr, [this]() {  return can_open_project(); }, this);
+            "", nullptr, [this]() { return can_open_project(); }, this);
 #endif
 
         // Recent Project
@@ -2441,7 +2785,7 @@ void MainFrame::init_menubar_as_editor()
                 if (m_plater)
                     m_plater->save_project();
             },
-            "menu_save", nullptr, [this]() {  return m_plater != nullptr && can_save(); }, this);
+            "menu_save", nullptr, [this]() { return m_plater != nullptr && can_save(); }, this);
 #else
         append_menu_item(
             fileMenu, wxID_ANY, _L("Save Project") + "\t" + ctrl + "S", _L("Save current project to file"),
@@ -2449,7 +2793,7 @@ void MainFrame::init_menubar_as_editor()
                 if (m_plater)
                     m_plater->save_project();
             },
-            "", nullptr, [this]() {  return m_plater != nullptr && can_save(); }, this);
+            "", nullptr, [this]() { return m_plater != nullptr && can_save(); }, this);
 #endif
 
 #ifndef __APPLE__
@@ -2459,7 +2803,7 @@ void MainFrame::init_menubar_as_editor()
                 if (m_plater)
                     m_plater->save_project(true);
             },
-            "menu_save", nullptr, [this]() {  return m_plater != nullptr && can_save_as(); }, this);
+            "menu_save", nullptr, [this]() { return m_plater != nullptr && can_save_as(); }, this);
 #else
         append_menu_item(
             fileMenu, wxID_ANY, _L("Save Project as") + dots + "\t" + ctrl + _L("Shift+") + "S", _L("Save current project as"),
@@ -2467,7 +2811,7 @@ void MainFrame::init_menubar_as_editor()
                 if (m_plater)
                     m_plater->save_project(true);
             },
-            "", nullptr, [this]() {  return m_plater != nullptr && can_save_as(); }, this);
+            "", nullptr, [this]() { return m_plater != nullptr && can_save_as(); }, this);
 #endif
 
         fileMenu->AppendSeparator();
@@ -2482,7 +2826,7 @@ void MainFrame::init_menubar_as_editor()
                     m_plater->add_file();
                 }
             },
-            "menu_import", nullptr, [this]() {  return can_add_models(); }, this);
+            "menu_import", nullptr, [this]() { return can_add_models(); }, this);
 #else
         append_menu_item(
             import_menu, wxID_ANY, _L("Import 3MF/STL/STEP/SVG/OBJ/AMF") + dots + "\t" + ctrl + "I", _L("Load a model"),
@@ -2491,11 +2835,11 @@ void MainFrame::init_menubar_as_editor()
                     m_plater->add_model();
                 }
             },
-            "", nullptr, [this]() {  return can_add_models(); }, this);
+            "", nullptr, [this]() { return can_add_models(); }, this);
 #endif
         append_menu_item(
             import_menu, wxID_ANY, _L("Import Configs") + dots /*+ "\tCtrl+I"*/, _L("Load configs"),
-            [this](wxCommandEvent&) { load_config_file(); }, "menu_import", nullptr, [this]() {    return true; }, this);
+            [this](wxCommandEvent&) { load_config_file(); }, "menu_import", nullptr, [this]() { return true; }, this);
 
         append_submenu(fileMenu, import_menu, wxID_ANY, _L("Import"), "");
 
@@ -2507,14 +2851,14 @@ void MainFrame::init_menubar_as_editor()
                 if (m_plater)
                     m_plater->export_stl();
             },
-            "menu_export_stl", nullptr, [this]() {    return can_export_model(); }, this);
+            "menu_export_stl", nullptr, [this]() { return can_export_model(); }, this);
         append_menu_item(
             export_menu, wxID_ANY, _L("Export all objects as STLs") + dots, _L("Export all objects as STLs"),
             [this](wxCommandEvent&) {
                 if (m_plater)
                     m_plater->export_stl(false, false, true);
             },
-            "menu_export_stl", nullptr, [this]() {    return can_export_model(); }, this);
+            "menu_export_stl", nullptr, [this]() { return can_export_model(); }, this);
         append_menu_item(
             export_menu, wxID_ANY, _L("Export Generic 3MF") + dots /* + "\tCtrl+G"*/,
             _L("Export 3mf file without using some 3mf-extensions"),
@@ -2522,7 +2866,7 @@ void MainFrame::init_menubar_as_editor()
                 if (m_plater)
                     m_plater->export_core_3mf();
             },
-            "menu_export_sliced_file", nullptr, [this]() {    return can_export_model(); }, this);
+            "menu_export_sliced_file", nullptr, [this]() { return can_export_model(); }, this);
         // BBS export .gcode.3mf
         append_menu_item(
             export_menu, wxID_ANY, _L("Export plate sliced file") + dots + "\t" + ctrl + "G", _L("Export current sliced file"),
@@ -2530,7 +2874,7 @@ void MainFrame::init_menubar_as_editor()
                 if (m_plater)
                     wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_EXPORT_SLICED_FILE));
             },
-            "menu_export_sliced_file", nullptr, [this]() {    return can_export_gcode(); }, this);
+            "menu_export_sliced_file", nullptr, [this]() { return can_export_gcode(); }, this);
 
         append_menu_item(
             export_menu, wxID_ANY, _L("Export all plate sliced file") + dots /* + "\tCtrl+G"*/, _L("Export all plate sliced file"),
@@ -2538,7 +2882,7 @@ void MainFrame::init_menubar_as_editor()
                 if (m_plater)
                     wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_EXPORT_ALL_SLICED_FILE));
             },
-            "menu_export_sliced_file", nullptr, [this]() {    return can_export_all_gcode(); }, this);
+            "menu_export_sliced_file", nullptr, [this]() { return can_export_all_gcode(); }, this);
 
         append_menu_item(
             export_menu, wxID_ANY, _L("Export G-code") + dots /* + "\tCtrl+G"*/, _L("Export current plate as G-code"),
@@ -2546,7 +2890,7 @@ void MainFrame::init_menubar_as_editor()
                 if (m_plater)
                     m_plater->export_gcode(false);
             },
-            "menu_export_gcode", nullptr, [this]() {    return can_export_gcode(); }, this);
+            "menu_export_gcode", nullptr, [this]() { return can_export_gcode(); }, this);
         append_menu_item(
             export_menu, wxID_ANY, _L("Export &Configs") + dots /* + "\tCtrl+E"*/, _L("Export current configuration to files"),
             [this](wxCommandEvent&) { export_config(); }, "menu_export_config", nullptr, []() { return true; }, this);
@@ -2586,41 +2930,41 @@ void MainFrame::init_menubar_as_editor()
         // BBS undo
         append_menu_item(
             editMenu, wxID_ANY, _L("Undo") + "\t" + ctrl + "Z", _L("Undo"), [this](wxCommandEvent&) { m_plater->undo(); }, "menu_undo",
-            nullptr, [this]() {  return m_plater->can_undo(); }, this);
+            nullptr, [this]() { return m_plater->can_undo(); }, this);
         // BBS redo
         append_menu_item(
             editMenu, wxID_ANY, _L("Redo") + "\t" + ctrl + "Y", _L("Redo"), [this](wxCommandEvent&) { m_plater->redo(); }, "menu_redo",
-            nullptr, [this]() {  return m_plater->can_redo(); }, this);
+            nullptr, [this]() { return m_plater->can_redo(); }, this);
         editMenu->AppendSeparator();
         // BBS Cut TODO
         append_menu_item(
             editMenu, wxID_ANY, _L("Cut") + "\t" + ctrl + "X", _L("Cut selection to clipboard"),
-            [this](wxCommandEvent&) {  m_plater->cut_selection_to_clipboard(); }, "menu_cut", nullptr,
-            [this]() {  return m_plater->can_copy_to_clipboard(); }, this);
+            [this](wxCommandEvent&) { m_plater->cut_selection_to_clipboard(); }, "menu_cut", nullptr,
+            [this]() { return m_plater->can_copy_to_clipboard(); }, this);
         // BBS Copy
         append_menu_item(
             editMenu, wxID_ANY, _L("Copy") + "\t" + ctrl + "C", _L("Copy selection to clipboard"),
             [this](wxCommandEvent&) { m_plater->copy_selection_to_clipboard(); }, "menu_copy", nullptr,
-            [this]() {  return m_plater->can_copy_to_clipboard(); }, this);
+            [this]() { return m_plater->can_copy_to_clipboard(); }, this);
         // BBS Paste
         append_menu_item(
             editMenu, wxID_ANY, _L("Paste") + "\t" + ctrl + "V", _L("Paste clipboard"),
             [this](wxCommandEvent&) { m_plater->paste_from_clipboard(); }, "menu_paste", nullptr,
-            [this]() {  return m_plater->can_paste_from_clipboard(); }, this);
+            [this]() { return m_plater->can_paste_from_clipboard(); }, this);
         // BBS Delete selected
         append_menu_item(
             editMenu, wxID_ANY, _L("Delete selected") + "\t" + _L("Del"), _L("Deletes the current selection"),
-            [this](wxCommandEvent&) { m_plater->remove_selected(); }, "menu_remove", nullptr, [this]() {  return can_delete(); }, this);
+            [this](wxCommandEvent&) { m_plater->remove_selected(); }, "menu_remove", nullptr, [this]() { return can_delete(); }, this);
         // BBS: delete all
         append_menu_item(
             editMenu, wxID_ANY, _L("Delete all") + "\t" + ctrl + "D", _L("Deletes all objects"),
             [this](wxCommandEvent&) { m_plater->delete_all_objects_from_model(); }, "menu_remove", nullptr,
-            [this]() {  return can_delete_all(); }, this);
+            [this]() { return can_delete_all(); }, this);
         editMenu->AppendSeparator();
         // BBS Clone Selected
         append_menu_item(
             editMenu, wxID_ANY, _L("Clone selected") /*+ "\tCtrl+M"*/, _L("Clone copies of selections"),
-            [this](wxCommandEvent&) { m_plater->clone_selection(); }, "menu_remove", nullptr, [this]() {  return can_clone(); }, this);
+            [this](wxCommandEvent&) { m_plater->clone_selection(); }, "menu_remove", nullptr, [this]() { return can_clone(); }, this);
         editMenu->AppendSeparator();
 #else
         // BBS undo
@@ -2636,7 +2980,7 @@ void MainFrame::init_menubar_as_editor()
                 }
                 m_plater->undo();
             },
-            "", nullptr, [this]() {  return m_plater->can_undo(); }, this);
+            "", nullptr, [this]() { return m_plater->can_undo(); }, this);
         // BBS redo
         append_menu_item(
             editMenu, wxID_ANY, _L("Redo") + "\t" + ctrl + "Y", _L("Redo"),
@@ -2650,7 +2994,7 @@ void MainFrame::init_menubar_as_editor()
                 }
                 m_plater->redo();
             },
-            "", nullptr, [this]() {  return m_plater->can_redo(); }, this);
+            "", nullptr, [this]() { return m_plater->can_redo(); }, this);
         editMenu->AppendSeparator();
         // BBS Cut TODO
         append_menu_item(
@@ -2665,7 +3009,7 @@ void MainFrame::init_menubar_as_editor()
                 }
                 m_plater->cut_selection_to_clipboard();
             },
-            "", nullptr, [this]() {  return m_plater->can_copy_to_clipboard(); }, this);
+            "", nullptr, [this]() { return m_plater->can_copy_to_clipboard(); }, this);
         // BBS Copy
         append_menu_item(
             editMenu, wxID_ANY, _L("Copy") + "\t" + ctrl + "C", _L("Copy selection to clipboard"),
@@ -2679,7 +3023,7 @@ void MainFrame::init_menubar_as_editor()
                 }
                 m_plater->copy_selection_to_clipboard();
             },
-            "", nullptr, [this]() {  return m_plater->can_copy_to_clipboard(); }, this);
+            "", nullptr, [this]() { return m_plater->can_copy_to_clipboard(); }, this);
         // BBS Paste
         append_menu_item(
             editMenu, wxID_ANY, _L("Paste") + "\t" + ctrl + "V", _L("Paste clipboard"),
@@ -2693,7 +3037,7 @@ void MainFrame::init_menubar_as_editor()
                 }
                 m_plater->paste_from_clipboard();
             },
-            "", nullptr, [this]() {  return m_plater->can_paste_from_clipboard(); }, this);
+            "", nullptr, [this]() { return m_plater->can_paste_from_clipboard(); }, this);
 #if 0
         // BBS Delete selected
         append_menu_item(editMenu, wxID_ANY, _L("Delete selected") + "\tBackSpace",
@@ -2715,7 +3059,7 @@ void MainFrame::init_menubar_as_editor()
                 }
                 m_plater->delete_all_objects_from_model();
             },
-            "", nullptr, [this]() {  return can_delete_all(); }, this);
+            "", nullptr, [this]() { return can_delete_all(); }, this);
         editMenu->AppendSeparator();
         // BBS Clone Selected
         append_menu_item(
@@ -2730,7 +3074,7 @@ void MainFrame::init_menubar_as_editor()
                 }
                 m_plater->clone_selection();
             },
-            "", nullptr, [this]() {  return can_clone(); }, this);
+            "", nullptr, [this]() { return can_clone(); }, this);
         editMenu->AppendSeparator();
 #endif
 
@@ -2747,7 +3091,7 @@ void MainFrame::init_menubar_as_editor()
                 }
                 m_plater->select_all();
             },
-            "", nullptr, [this]() {    return can_select(); }, this);
+            "", nullptr, [this]() { return can_select(); }, this);
         // BBS Deslect All
         append_menu_item(
             editMenu, wxID_ANY, _L("Deselect all") + "\tEsc", _L("Deselects all objects"),
@@ -2760,7 +3104,7 @@ void MainFrame::init_menubar_as_editor()
                 }
                 m_plater->deselect_all();
             },
-            "", nullptr, [this]() {    return can_deselect(); }, this);
+            "", nullptr, [this]() { return can_deselect(); }, this);
         // editMenu->AppendSeparator();
         // append_menu_check_item(editMenu, wxID_ANY, _L("Show Model Mesh(TODO)"),
         //     _L("Display triangles of models"), [this](wxCommandEvent& evt) {
@@ -3332,8 +3676,7 @@ void MainFrame::init_menubar_as_editor()
     // wx bug: https://trac.wxwidgets.org/ticket/18328
     wxMenu* apple_menu = m_menubar->OSXGetAppleMenu();
     if (apple_menu != nullptr) {
-        apple_menu->Bind(
-            wxEVT_MENU, [this](wxCommandEvent&) { Close(); }, wxID_EXIT);
+        apple_menu->Bind(wxEVT_MENU, [this](wxCommandEvent&) { Close(); }, wxID_EXIT);
     }
 #endif // __APPLE__
 }
@@ -3825,8 +4168,9 @@ void MainFrame::set_print_button_to_default(PrintSelectType select_type)
         m_print_btn->Enable(m_print_enable);
         this->Layout();
     } else if (select_type == PrintSelectType::eExportGcode) {
-        m_print_btn->SetLabel(_L("Export G-code file"));
+        m_print_btn->SetLabel(_L("Upload G-code file"));
         m_print_select = eExportGcode;
+        upload_gcode_c3dp();
         if (m_print_enable)
             m_print_enable = get_enable_print_status() && can_send_gcode();
         m_print_btn->Enable(m_print_enable);

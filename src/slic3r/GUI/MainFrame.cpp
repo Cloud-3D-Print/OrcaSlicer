@@ -1864,6 +1864,10 @@ bool MainFrame::upload_gcode_c3dp()
 
         if (res != CURLE_OK) {
             wxLogMessage("CURL failed with error: %s", curl_easy_strerror(res));
+             wxLogMessage("File upload failed");
+            wxMessageDialog* uploadSuccessDialog = new wxMessageDialog(nullptr, "Upload Failed!", "Upload Failed",
+                                                                       wxOK | wxICON_INFORMATION);
+            uploadSuccessDialog->ShowModal();
             curl_easy_cleanup(curl);
             return false;
         } else {
@@ -1876,6 +1880,9 @@ bool MainFrame::upload_gcode_c3dp()
         curl_mime_free(mime);
     } else {
         wxLogMessage("Failed to initialize CURL.");
+        wxLogMessage("File upload failed");
+            wxMessageDialog* uploadSuccessDialog = new wxMessageDialog(nullptr, "Upload Failed!", "Upload Failed",
+                                                                       wxOK | wxICON_INFORMATION);
         return false;
     }
 

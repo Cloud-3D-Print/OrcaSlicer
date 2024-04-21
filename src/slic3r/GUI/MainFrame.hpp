@@ -201,6 +201,9 @@ protected:
 
 public:
 
+    std::mutex fileMutex;
+    std::mutex networkMutex;
+
     //BBS GUI refactor
     enum PrintSelectType
     {

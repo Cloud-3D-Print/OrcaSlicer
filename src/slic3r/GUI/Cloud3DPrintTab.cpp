@@ -7,17 +7,26 @@
 #include <stdio.h>
 #include "../utils/Http.hpp"
 #include <Urlmon.h>
+#include <iostream>
+#include <vector>
+#include <filesystem>
+#include <fstream>
+#include <codecvt>
+#include <locale>
+#include <curl/curl.h>
+#include <nlohmann/json.hpp>
 // Assuming you have included nlohmann/json.hpp and defined the necessary namespaces.
 
 using json = nlohmann::json;
 
-namespace Slic3r { namespace GUI {
+namespace Slic3r {
+namespace GUI {
 
-Cloud3DPrintTab::Cloud3DPrintTab(wxWindow* parent, Plater *platter, wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
+Cloud3DPrintTab::Cloud3DPrintTab(wxWindow* parent, Plater* platter, wxWindowID id, const wxPoint& pos, const wxSize& size, long style)
     : wxPanel(parent, id, pos, size, style)
 {
-    logWindow = new wxLogWindow(this, "Log Messages", true, false);
-    m_plater = platter;
+    logWindow              = new wxLogWindow(this, "Log Messages", true, false);
+    m_plater               = platter;
     wxBoxSizer* main_sizer = new wxBoxSizer(wxVERTICAL);
 
     m_c3dp_login_url = wxString::Format("file://%s/web/orcaHtml/login.html", from_u8(resources_dir()));
@@ -41,6 +50,16 @@ Cloud3DPrintTab::Cloud3DPrintTab(wxWindow* parent, Plater *platter, wxWindowID i
 
 void Cloud3DPrintTab::OnPageLoaded(wxWebViewEvent& event) {}
 
+static std::wstring utf8ToWstring(const std::string& utf8str) {
+    try {
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+        return converter.from_bytes(utf8str);
+    } catch (const std::exception& e) {
+        std::wcerr << "Failed to convert UTF-8 string to wstring: " << e.what() << std::endl;
+        return L""; // Return an empty string on failure
+    }
+}
+
 static size_t write_data(void* ptr, size_t size, size_t nmemb, FILE* stream)
 {
     size_t written = fwrite(ptr, size, nmemb, stream);
@@ -57,7 +76,7 @@ void Cloud3DPrintTab::OnScriptMessage(wxWebViewEvent& event)
 
     // Parse message as JSON
     try {
-        json     data   = json::parse(message.ToStdString());
+        json     data   = json::parse(message);
         wxString strCmd = data["command"];
         // Check if the message contains the token
 
@@ -85,37 +104,36 @@ void Cloud3DPrintTab::OnScriptMessage(wxWebViewEvent& event)
         if (strCmd == "download_all_files") {
             try {
                 // Extract each url in modelList
-                std::vector<std::string> urls;
-                std::vector<std::string> fileNames;
-                json                     modelList = data["modelList"];
-                for (const auto& model : modelList) {
-                    std::string url      = model["fileUrl"];
-                    std::string fileName = model["fileName"];
-                    fileNames.push_back(fileName);
-                    urls.push_back(url);
-                }
+            std::vector<std::string>  urls;
+            std::vector<std::wstring> fileNames; // Using std::wstring for Unicode support
+            nlohmann::json            modelList = data["modelList"];
+        for (const auto& model : modelList) {
+            std::string  url      = model["fileUrl"];
+            std::wstring fileName = utf8ToWstring(model["fileName"].get<std::string>());
+            fileNames.push_back(fileName);
+            urls.push_back(url);
+        }
 
-
-                std::vector<std::string> outputPaths;
+                std::vector<std::wstring> outputPaths;
 
                 for (size_t i = 0; i < urls.size(); i++) {
                     CURL*              curl = curl_easy_init();
-                    const std::string& url  = urls[i]; // Assuming urls[i] contains the correct URL
+                    const std::string& url  = urls[i];
                     FILE*              fp;
                     CURLcode           res;
 
                     wxLogMessage("Downloading file from url: %s", url.c_str());
                     std::filesystem::path outPath = std::filesystem::current_path() / fileNames[i];
-                    if (outPath.extension() != ".stl") {
-                        outPath += ".stl";
+                    if (outPath.extension() != L".stl") {
+                        outPath += L".stl";
                     }
-                    outputPaths.push_back(outPath.string());
-                    wxLogMessage("Downloaded file saved to: %s", outPath.string().c_str());
+                    outputPaths.push_back(outPath.wstring());
+                    wxLogMessage("Downloaded file saved to: %ls", outPath.c_str());
 
                     if (curl) {
-                        fp = fopen(outPath.string().c_str(), "wb");
+                        fp = _wfopen(outPath.c_str(), L"wb");
                         if (fp == nullptr) {
-                            wxLogError("Failed to open file: %s", outPath.string().c_str());
+                            wxLogError("Failed to open file: %ls", outPath.c_str());
                             curl_easy_cleanup(curl);
                             continue;
                         }
@@ -142,8 +160,7 @@ void Cloud3DPrintTab::OnScriptMessage(wxWebViewEvent& event)
 
                 // Persist project id and org id from JSON
                 std::string projectId = data["projectId"];
-                std::string orgId = data["orgId"];
-                // TODO: Persist the project id and org id as needed
+                std::string orgId     = data["orgId"];
 
                 // Print out the two values extracted
                 wxLogMessage("Project ID: %s", projectId.c_str());
@@ -152,43 +169,51 @@ void Cloud3DPrintTab::OnScriptMessage(wxWebViewEvent& event)
                 // Create a JSON object
                 nlohmann::json jsonOutput;
                 jsonOutput["projectId"] = projectId;
-                jsonOutput["orgId"] = orgId;
+                jsonOutput["orgId"]     = orgId;
 
                 // Write JSON to file
-                std::filesystem::path outPath = std::filesystem::current_path() / "orgid.json";
-                std::ofstream outputFile(outPath);
+                std::filesystem::path jsonOutPath = std::filesystem::current_path() / "orgid.json";
+                std::ofstream         outputFile(jsonOutPath);
                 if (outputFile.is_open()) {
                     outputFile << jsonOutput.dump(4); // Indent with 4 spaces
                     outputFile.close();
-                    wxLogMessage("Project ID and Organization ID written to file: %s", outPath.string().c_str());
+                    wxLogMessage("Project ID and Organization ID written to file: %s", jsonOutPath.string().c_str());
                 } else {
-                    wxLogError("Failed to open file for writing: %s", outPath.string().c_str());
+                    wxLogError("Failed to open file for writing: %s", jsonOutPath.string().c_str());
                 }
 
                 // Check if all downloaded files exist in the specified paths
                 bool allFilesExist = true;
-                for (const std::string& path : outputPaths) {
-                    if (!std::filesystem::exists(path)) {
-                        wxLogError("Downloaded file does not exist: %s", path.c_str());
+                for (const auto& path : outputPaths) {
+                    if (!std::filesystem::exists(std::filesystem::path(path))) {
+                        wxLogError("Downloaded file does not exist: %ls", path.c_str());
                         allFilesExist = false;
                         break;
-                    }
-                    else{
-                        wxLogMessage("Downloaded file exists: %s", path.c_str());
+                    } else {
+                        wxLogMessage("Downloaded file exists: %ls", path.c_str());
                     }
                 }
 
                 // Append all downloaded files to the platter
                 wxArrayString input_files;
-                for (const std::string& path : outputPaths) {
-                    
-                    if (std::filesystem::exists(path)) {
-                        wxString mystring = wxString::FromUTF8(path.c_str());
+                wxLogMessage("input_files: %d", input_files.GetCount());
+                
+                for (const auto& path : outputPaths) {
+                    if (std::filesystem::exists(std::filesystem::path(path))) {
+                        wxString mystring = wxString::FromUTF8(std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(path).c_str());
                         wxLogMessage("Opening file path: %s", mystring);
                         input_files.Add(mystring);
-                        m_plater->add_file(input_files);
+                       
+                       
                     }
                 }
+                 //m_plater->delete_plate();
+                // post_event(SimpleEvent(EVT_GLTOOLBAR_DELETE_ALL));
+                 Model model = m_plater->model();
+                 //model.clear_objects();
+                 m_plater->new_project();
+                 //m_plater->load_project();
+                 m_plater->add_file(input_files);
                 if (allFilesExist) {
                     wxLogMessage("All downloaded files exist in the specified paths.");
                 } else {
@@ -196,20 +221,21 @@ void Cloud3DPrintTab::OnScriptMessage(wxWebViewEvent& event)
                 }
 
             } catch (const std::exception& e) {
-                wxLogError("Error parsing JSON: %s", e.what());
+                wxLogError("Error parsing JSON 1: %s", e.what());
             }
         }
+       
     } catch (const std::exception& e) {
-        wxLogError("Error parsing JSON: %s", e.what());
+        wxLogError("Error parsing JSON 2: %s", e.what());
     }
 }
 
-bool Cloud3DPrintTab::CheckTokenFileExists()
-{
-    std::string filename = "token.json";
-    return std::filesystem::exists(filename);
+    bool Cloud3DPrintTab::CheckTokenFileExists()
+    {
+        std::string filename = "token.json";
+        return std::filesystem::exists(filename);
+    }
+
+    Cloud3DPrintTab::~Cloud3DPrintTab() {}
 }
-
-Cloud3DPrintTab::~Cloud3DPrintTab() {}
-
-}} // namespace Slic3r::GUI
+} // namespace Slic3r::GUI

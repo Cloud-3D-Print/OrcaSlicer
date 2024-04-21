@@ -13,7 +13,7 @@
 ///|/ PrusaSlicer is released under the terms of the AGPLv3 or higher
 ///|/
 #include "MainFrame.hpp"
-
+#include <mutex>
 #include <wx/panel.h>
 #include <wx/notebook.h>
 #include <wx/listbook.h>
@@ -79,12 +79,19 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <codecvt> // For std::wstring_convert
+#include <locale>  // For std::codecvt_utf8
 
 #ifdef _WIN32
 #include <dbt.h>
 #include <shlobj.h>
 #endif // _WIN32
 #include <slic3r/GUI/CreatePresetsDialog.hpp>
+
+#include <iostream>
+#include <string>
+#include <locale>
+#include <codecvt>
 
 namespace Slic3r { namespace GUI {
 
@@ -577,7 +584,8 @@ MainFrame::MainFrame()
             return;
         } else if (evt.CmdDown() && evt.GetKeyCode() == 'G') {
             if (can_export_gcode()) {
-                wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_EXPORT_SLICED_FILE));
+                //upload_gcode_c3dp();
+                // wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_EXPORT_SLICED_FILE));
             }
             evt.Skip();
             return;
@@ -1586,26 +1594,179 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, std::stri
 //     return true;
 // }
 
+static std::string utf8ToStdString(const std::string& utf8str)
+{
+    try {
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+        return converter.to_bytes(converter.from_bytes(utf8str));
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to convert UTF-8 string to string: " << e.what() << std::endl;
+        return ""; // Return an empty string on failure
+    }
+}
+
+static std::string wstring_to_utf8(const std::wstring& str) {
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    return converter.to_bytes(str);
+}
+
+
+static std::wstring utf8ToWstring(const std::string& utf8str)
+{
+    try {
+        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+        return converter.from_bytes(utf8str);
+    } catch (const std::exception& e) {
+        std::wcerr << "Failed to convert UTF-8 string to wstring: " << e.what() << std::endl;
+        return L""; // Return an empty wide string on failure
+    }
+}
+
+
+// bool MainFrame::upload_gcode_c3dp()
+// {
+//     std::string gcodePath = m_plater->export_gcode_path(false);
+//     wxLogMessage("Gcode path: %s", gcodePath);
+
+//     // Load and parse the organization ID JSON
+//     std::filesystem::path inPath = std::filesystem::current_path() / "orgid.json";
+//     std::ifstream         file(inPath.generic_string(), std::ifstream::binary);
+//     if (!file.is_open()) {
+//         wxLogMessage("Failed to open file for reading: %s", inPath.generic_string());
+//         return false;
+//     }
+
+
+
+//     std::string fileContents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+//     file.close();
+
+//     std::string projectId, orgId;
+//     try {
+//         nlohmann::json jsonData = nlohmann::json::parse(fileContents);
+//         projectId               = jsonData["projectId"];
+//         orgId                   = jsonData["orgId"];
+//     } catch (const std::exception& e) {
+//         wxLogMessage("Failed to parse JSON: %s", e.what());
+//         return false;
+//     }
+
+//     std::string token;
+//     std::string filename = "token.json";
+//     if (std::filesystem::exists(filename)) {
+//         std::ifstream tokenFile(filename);
+//         if (tokenFile.is_open()) {
+//             std::string tokenJson((std::istreambuf_iterator<char>(tokenFile)), std::istreambuf_iterator<char>());
+//             tokenFile.close();
+
+//             try {
+//                 nlohmann::json tokenData = nlohmann::json::parse(tokenJson);
+//                 token                    = tokenData["token"];
+//             } catch (const std::exception& e) {
+//                 std::cerr << "Failed to parse token JSON: " << e.what() << std::endl;
+//                 wxLogMessage("Failed to parse token JSON: %s", e.what());
+//                 return false;
+//             }
+//         } else {
+//             std::cerr << "Failed to open token file: " << filename << std::endl;
+//             wxLogMessage("Failed to open token file: %s", filename);
+//             return false;
+//         }
+//     }
+
+//     // Extract just the file name without extension
+//     fs::path    filePath(gcodePath);
+//     std::string fileNameNE = filePath.stem().string();
+//     wxLogMessage("File name without extension: %s", fileNameNE.c_str());
+
+//     CURL*    curl;
+//     CURLcode res;
+//     curl = curl_easy_init();
+
+//     std::string readBuffer; // This will hold the response data
+
+//     if (curl) {
+//         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+//         curl_easy_setopt(curl, CURLOPT_URL, "https://tx-msggw.cloud3dprint.com/fs-api/cloudStorage/api/uploadGcodeFile");
+//         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+//         curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+//         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+//         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
+//         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+//         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+//         curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, DebugCallback);
+//         curl_easy_setopt(curl, CURLOPT_DEBUGDATA, NULL);
+//         struct curl_slist* headers = NULL;
+//         headers                    = curl_slist_append(headers, "User-Agent: Apifox/1.0.0 (https://apifox.com)");
+//         headers                    = curl_slist_append(headers, ("Authorization: Bearer " + token).c_str());
+//         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+//         curl_mime*     mime = curl_mime_init(curl);
+//         curl_mimepart* part = curl_mime_addpart(mime);
+//         curl_mime_name(part, "fileName");
+//         curl_mime_data(part, fileNameNE.c_str(), CURL_ZERO_TERMINATED); // Directly passing the UTF-8 encoded file path
+//         part = curl_mime_addpart(mime);
+//         curl_mime_name(part, "fileExtension");
+//         curl_mime_data(part, "gcode", CURL_ZERO_TERMINATED);
+//         part = curl_mime_addpart(mime);
+//         curl_mime_name(part, "projectId");
+//         curl_mime_data(part, projectId.c_str(), CURL_ZERO_TERMINATED);
+//         part = curl_mime_addpart(mime);
+//         curl_mime_name(part, "containQuantity");
+//         curl_mime_data(part, "1", CURL_ZERO_TERMINATED);
+//         part = curl_mime_addpart(mime);
+//         curl_mime_name(part, "thumbnailUrl");
+//         curl_mime_data(part, "", CURL_ZERO_TERMINATED);
+//         part = curl_mime_addpart(mime);
+//         curl_mime_name(part, "source");
+//         curl_mime_data(part, "orcaSlice", CURL_ZERO_TERMINATED);
+//         part = curl_mime_addpart(mime);
+//         curl_mime_name(part, "file");
+//         curl_mime_filedata(part, gcodePath.c_str()); // Directly passing the UTF-8 encoded file path
+//         curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+
+//         res = curl_easy_perform(curl);
+
+//         if (res != CURLE_OK) {
+//             wxLogMessage("CURL failed with error: %s", curl_easy_strerror(res));
+//             curl_easy_cleanup(curl);
+//             return false;
+//         } else {
+//             wxLogMessage("File uploaded successfully. HTTP response code: %ld");
+//             wxMessageDialog* uploadSuccessDialog = new wxMessageDialog(nullptr, "Upload successful!", "Upload Success",
+//                                                                        wxOK | wxICON_INFORMATION);
+//             uploadSuccessDialog->ShowModal();
+//         }
+
+//         curl_mime_free(mime);
+//     } else {
+//         wxLogMessage("Failed to initialize CURL.");
+//         return false;
+//     }
+
+//     curl_easy_cleanup(curl);
+
+//     return true;
+// }
+
 bool MainFrame::upload_gcode_c3dp()
 {
-    // Get the file name and path for the G-code
-    wxString fileName = m_plater->get_project_filename(".gcode");
-    wxLogMessage("Project file name: %s", fileName);
-    std::string gcodePath     = m_plater->export_gcode_path(false);
-    wxString    gcodeFilePath = m_plater->get_export_gcode_filename(".gcode");
-    wxLogMessage("Gcode file path: %s", gcodeFilePath);
-    wxLogMessage("Gcode path: %s", gcodePath);
-
-    if (gcodeFilePath.IsEmpty()) {
-        wxLogMessage("Failed to get exported gcode file path.");
+    wxTextEntryDialog* dialog = new wxTextEntryDialog(this, "Enter contain quantity:", "Input Required", "1");
+    if (dialog->ShowModal() != wxID_OK) {
+        wxLogMessage("User cancelled the contain quantity input.");
         return false;
     }
+    std::string containQuantity = dialog->GetValue().ToStdString();
+    dialog->Destroy();
 
-    // Load and parse the organization ID JSON
+    std::lock_guard<std::mutex> fileLock(fileMutex); // Lock for file operations
+
+    std::string gcodePath = m_plater->export_gcode_path(false);
+    wxLogMessage("Gcode path: %s", gcodePath.c_str());
+
     std::filesystem::path inPath = std::filesystem::current_path() / "orgid.json";
-    std::ifstream         file(inPath.generic_string(), std::ifstream::binary);
+    std::ifstream file(inPath.generic_string(), std::ifstream::binary);
     if (!file.is_open()) {
-        wxLogMessage("Failed to open file for reading: %s", inPath.generic_string());
+        wxLogMessage("Failed to open file for reading: %s", inPath.generic_string().c_str());
         return false;
     }
 
@@ -1615,8 +1776,8 @@ bool MainFrame::upload_gcode_c3dp()
     std::string projectId, orgId;
     try {
         nlohmann::json jsonData = nlohmann::json::parse(fileContents);
-        projectId               = jsonData["projectId"];
-        orgId                   = jsonData["orgId"];
+        projectId = jsonData["projectId"];
+        orgId = jsonData["orgId"];
     } catch (const std::exception& e) {
         wxLogMessage("Failed to parse JSON: %s", e.what());
         return false;
@@ -1632,22 +1793,27 @@ bool MainFrame::upload_gcode_c3dp()
 
             try {
                 nlohmann::json tokenData = nlohmann::json::parse(tokenJson);
-                token                    = tokenData["token"];
+                token = tokenData["token"];
             } catch (const std::exception& e) {
-                std::cerr << "Failed to parse token JSON: " << e.what() << std::endl;
                 wxLogMessage("Failed to parse token JSON: %s", e.what());
                 return false;
             }
         } else {
-            std::cerr << "Failed to open token file: " << filename << std::endl;
-            wxLogMessage("Failed to open token file: %s", filename);
+            wxLogMessage("Failed to open token file: %s", filename.c_str());
             return false;
         }
     }
 
-    std::string fileNameNE = gcodeFilePath.c_str();
-    fs::path    filePath(gcodeFilePath);
-    fileNameNE = filePath.stem().string();
+    // Release file mutex before starting network operations
+    fileLock.~lock_guard();
+
+    {
+        std::lock_guard<std::mutex> networkLock(networkMutex); // Lock for network operations
+
+           // Extract just the file name without extension
+    fs::path    filePath(gcodePath);
+    std::string fileNameNE = filePath.stem().string();
+    wxLogMessage("File name without extension: %s", fileNameNE.c_str());
 
     CURL*    curl;
     CURLcode res;
@@ -1673,7 +1839,7 @@ bool MainFrame::upload_gcode_c3dp()
         curl_mime*     mime = curl_mime_init(curl);
         curl_mimepart* part = curl_mime_addpart(mime);
         curl_mime_name(part, "fileName");
-        curl_mime_data(part, fileNameNE.c_str(), CURL_ZERO_TERMINATED);
+        curl_mime_data(part, fileNameNE.c_str(), CURL_ZERO_TERMINATED); // Directly passing the UTF-8 encoded file path
         part = curl_mime_addpart(mime);
         curl_mime_name(part, "fileExtension");
         curl_mime_data(part, "gcode", CURL_ZERO_TERMINATED);
@@ -1682,7 +1848,7 @@ bool MainFrame::upload_gcode_c3dp()
         curl_mime_data(part, projectId.c_str(), CURL_ZERO_TERMINATED);
         part = curl_mime_addpart(mime);
         curl_mime_name(part, "containQuantity");
-        curl_mime_data(part, "1", CURL_ZERO_TERMINATED);
+        curl_mime_data(part, containQuantity.c_str(), CURL_ZERO_TERMINATED);
         part = curl_mime_addpart(mime);
         curl_mime_name(part, "thumbnailUrl");
         curl_mime_data(part, "", CURL_ZERO_TERMINATED);
@@ -1691,16 +1857,8 @@ bool MainFrame::upload_gcode_c3dp()
         curl_mime_data(part, "orcaSlice", CURL_ZERO_TERMINATED);
         part = curl_mime_addpart(mime);
         curl_mime_name(part, "file");
-        curl_mime_filedata(part, gcodePath.c_str());
+        curl_mime_filedata(part, gcodePath.c_str()); // Directly passing the UTF-8 encoded file path
         curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
-
-        curl_mime_name(part, "file");
-        CURLcode fileResult = curl_mime_filedata(part, gcodePath.c_str());
-        if (fileResult != CURLE_OK) {
-            wxLogMessage("Failed to prepare file for upload: %s", curl_easy_strerror(fileResult));
-            curl_easy_cleanup(curl);
-            return false;
-        }
 
         res = curl_easy_perform(curl);
 
@@ -1710,15 +1868,9 @@ bool MainFrame::upload_gcode_c3dp()
             return false;
         } else {
             wxLogMessage("File uploaded successfully. HTTP response code: %ld");
-        }
-
-        // Check the result of the curl operation
-        if (res != CURLE_OK) {
-            wxLogMessage("CURL failed with error: %s", curl_easy_strerror(res));
-            curl_easy_cleanup(curl);
-            return false;
-        } else {
-            wxLogMessage("File uploaded successfully.");
+            wxMessageDialog* uploadSuccessDialog = new wxMessageDialog(nullptr, "Upload successful!", "Upload Success",
+                                                                       wxOK | wxICON_INFORMATION);
+            uploadSuccessDialog->ShowModal();
         }
 
         curl_mime_free(mime);
@@ -1728,9 +1880,10 @@ bool MainFrame::upload_gcode_c3dp()
     }
 
     curl_easy_cleanup(curl);
+    }
+
     return true;
 }
-
 static std::string loadAuthToken()
 {
     std::string   token;
@@ -1752,10 +1905,15 @@ static std::string loadAuthToken()
 
 bool MainFrame::upload_project_c3dp()
 {
+
+    std::lock_guard<std::mutex> fileLock(fileMutex);  // Lock for file operations
+
     wxString    fileName     = m_plater->get_project_filename(".3mf");
     std::string filePathTest = m_plater->export_core_3mf_path();
     wxLogMessage("Project file path: %s", filePathTest);
     m_plater->reset_project_dirty_after_save();
+    fileName = filePathTest.c_str();
+    
 
     boost::filesystem::path path = into_path(fileName);
     if (!boost::filesystem::exists(path)) {
@@ -1799,6 +1957,10 @@ bool MainFrame::upload_project_c3dp()
         wxLogMessage("Failed to parse JSON: %s", e.what());
         return false;
     }
+
+    fileLock.~lock_guard();//Release guard for file mutex
+
+    std::lock_guard<std::mutex> networkLock(networkMutex);  // Lock for network operations
 
     CURL* curl = curl_easy_init();
     if (!curl) {
@@ -1861,13 +2023,13 @@ bool MainFrame::upload_project_c3dp()
 
     curl_mime_name(part, "orgId");
     curl_mime_data(part, orgId.c_str(), CURL_ZERO_TERMINATED);
-    
+
     part = curl_mime_addpart(mime);
 
     curl_mime_name(part, "file");
     curl_mime_filedata(part, filePathTest.c_str());
 
-    //Adds mime to curl
+    // Adds mime to curl
     curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
 
     CURLcode res = curl_easy_perform(curl);
@@ -1875,6 +2037,9 @@ bool MainFrame::upload_project_c3dp()
         std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
         wxLogMessage("curl_easy_perform() failed: %s", curl_easy_strerror(res));
     } else {
+            wxMessageDialog* uploadSuccessDialog = new wxMessageDialog(nullptr, "Upload successful!", "Upload Success",
+                                                                       wxOK | wxICON_INFORMATION);
+            uploadSuccessDialog->ShowModal();
         wxLogMessage("Successfully uploaded project file.");
     }
 
@@ -2061,7 +2226,7 @@ wxBoxSizer* MainFrame::create_side_tools()
     // m_publish_btn = new Button(this, _L("Upload"), "bar_publish", 0, FromDIP(16));
     m_slice_btn        = new SideButton(this, _L("Slice plate"), "");
     m_slice_option_btn = new SideButton(this, "", "sidebutton_dropdown", 0, FromDIP(14));
-    m_print_btn        = new SideButton(this, _L("Print plate"), "");
+    m_print_btn        = new SideButton(this, _L("Upload G-Code File"), "");
     m_print_option_btn = new SideButton(this, "", "sidebutton_dropdown", 0, FromDIP(14));
 
     update_side_button_style();
@@ -2106,32 +2271,33 @@ wxBoxSizer* MainFrame::create_side_tools()
     });
 
     m_print_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent& event) {
-        // this->m_plater->select_view_3D("Preview");
-        if (m_print_select == ePrintAll || m_print_select == ePrintPlate) {
-            m_plater->apply_background_progress();
-            // check valid of print
-            m_print_enable = get_enable_print_status();
-            m_print_btn->Enable(m_print_enable);
-            if (m_print_enable) {
-                if (m_print_select == ePrintAll)
-                    wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_PRINT_ALL));
-                if (m_print_select == ePrintPlate)
-                    wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_PRINT_PLATE));
-            }
-        } else if (m_print_select == eExportGcode)
-            wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_EXPORT_GCODE));
-        else if (m_print_select == eSendGcode)
-            wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_SEND_GCODE));
-        else if (m_print_select == eUploadGcode)
-            wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_UPLOAD_GCODE));
-        else if (m_print_select == eExportSlicedFile)
-            wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_EXPORT_SLICED_FILE));
-        else if (m_print_select == eExportAllSlicedFile)
-            wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_EXPORT_ALL_SLICED_FILE));
-        else if (m_print_select == eSendToPrinter)
-            wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_SEND_TO_PRINTER));
-        else if (m_print_select == eSendToPrinterAll)
-            wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_SEND_TO_PRINTER_ALL));
+        upload_gcode_c3dp();
+        // // this->m_plater->select_view_3D("Preview");
+        // if (m_print_select == ePrintAll || m_print_select == ePrintPlate) {
+        //     m_plater->apply_background_progress();
+        //     // check valid of print
+        //     m_print_enable = get_enable_print_status();
+        //     m_print_btn->Enable(m_print_enable);
+        //     if (m_print_enable) {
+        //         if (m_print_select == ePrintAll)
+        //             wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_PRINT_ALL));
+        //         if (m_print_select == ePrintPlate)
+        //             wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_PRINT_PLATE));
+        //     }
+        // } else if (m_print_select == eExportGcode)
+        //     wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_EXPORT_GCODE));
+        // else if (m_print_select == eSendGcode)
+        //     wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_SEND_GCODE));
+        // else if (m_print_select == eUploadGcode)
+        //     wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_UPLOAD_GCODE));
+        // else if (m_print_select == eExportSlicedFile)
+        //     wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_EXPORT_SLICED_FILE));
+        // else if (m_print_select == eExportAllSlicedFile)
+        //     wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_EXPORT_ALL_SLICED_FILE));
+        // else if (m_print_select == eSendToPrinter)
+        //     wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_SEND_TO_PRINTER));
+        // else if (m_print_select == eSendToPrinterAll)
+        //     wxPostEvent(m_plater, SimpleEvent(EVT_GLTOOLBAR_SEND_TO_PRINTER_ALL));
     });
 
     m_slice_option_btn->Bind(wxEVT_BUTTON, [this](wxCommandEvent& event) {
@@ -2168,17 +2334,6 @@ wxBoxSizer* MainFrame::create_side_tools()
 
         if (wxGetApp().preset_bundle && !wxGetApp().preset_bundle->is_bbl_vendor()) {
             // ThirdParty Buttons
-            SideButton* export_gcode_btn = new SideButton(p, _L("Upload G-Code File"), "");
-            export_gcode_btn->SetCornerRadius(0);
-            export_gcode_btn->Bind(wxEVT_BUTTON, [this, p](wxCommandEvent&) {
-                m_print_btn->SetLabel(_L("Upload G-Code File"));
-                upload_gcode_c3dp();
-                m_print_enable = get_enable_print_status();
-                m_print_btn->Enable(m_print_enable);
-                this->Layout();
-                p->Dismiss();
-            });
-
             // upload and print
             // SideButton* send_gcode_btn = new SideButton(p, _L("Print"), "");
             // send_gcode_btn->SetCornerRadius(0);
@@ -2191,7 +2346,7 @@ wxBoxSizer* MainFrame::create_side_tools()
             //     p->Dismiss();
             //});
             // Upload to C3DP
-            SideButton* upload_gcode_btn_c3dp = new SideButton(p, _L("Upload G-code file"), "");
+            SideButton* upload_gcode_btn_c3dp = new SideButton(p, _L("Upload G-code File"), "");
             upload_gcode_btn_c3dp->SetCornerRadius(0);
             upload_gcode_btn_c3dp->Bind(wxEVT_BUTTON, [this, p](wxCommandEvent&) { upload_gcode_c3dp(); });
 
@@ -4153,32 +4308,14 @@ void MainFrame::on_config_changed(DynamicPrintConfig* config) const
 
 void MainFrame::set_print_button_to_default(PrintSelectType select_type)
 {
-    if (select_type == PrintSelectType::ePrintPlate) {
-        m_print_btn->SetLabel(_L("Print plate"));
-        m_print_select = ePrintPlate;
-        if (m_print_enable)
-            m_print_enable = get_enable_print_status();
-        m_print_btn->Enable(m_print_enable);
-        this->Layout();
-    } else if (select_type == PrintSelectType::eSendGcode) {
-        m_print_btn->SetLabel(_L("Print"));
-        m_print_select = eSendGcode;
-        if (m_print_enable)
-            m_print_enable = get_enable_print_status() && can_send_gcode();
-        m_print_btn->Enable(m_print_enable);
-        this->Layout();
-    } else if (select_type == PrintSelectType::eExportGcode) {
-        m_print_btn->SetLabel(_L("Upload G-code file"));
-        m_print_select = eExportGcode;
-        upload_gcode_c3dp();
-        if (m_print_enable)
-            m_print_enable = get_enable_print_status() && can_send_gcode();
-        m_print_btn->Enable(m_print_enable);
-        this->Layout();
-    } else {
-        // unsupport
-        return;
-    }
+    m_print_btn->SetLabel(_L("Upload G-code file"));
+    wxLogMessage("gcode file upload ln 41");
+    m_print_select = eExportGcode;
+    //upload_gcode_c3dp();
+    if (m_print_enable)
+        m_print_enable = get_enable_print_status() && can_send_gcode();
+    m_print_btn->Enable(false);
+    this->Layout();
 }
 
 void MainFrame::add_to_recent_projects(const wxString& filename)
